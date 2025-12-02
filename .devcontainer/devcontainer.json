@@ -1,16 +1,17 @@
 {
-  "name": "Python Flask Development Container",
+  "name": "Python Flask Development Container (uv)",
   "image": "mcr.microsoft.com/devcontainers/python:0-3.11-bullseye",
   "features": {
-    "ghcr.io/devcontainers-contrib/features/coverage-py:2": {}
+    "ghcr.io/devcontainers-contrib/features/coverage-py:2": {},
+    "ghcr.io/devcontainers-contrib/features/uv:1": {}
   },
   "hostRequirements": {
     "cpus": 4
   },
   "waitFor": "onCreateCommand",
   "updateContentCommand": "",
-  "postCreateCommand": "pip install -r requirements.txt && apt-get clean && rm -rf /root/.cache/pip",
-  "postStartCommand": "",   // For commands to run each Codespace start
+  "postCreateCommand": "uv sync && apt-get clean",
+  "postStartCommand": "", // For commands to run each Codespace start
   "customizations": {
     "vscode": {
       "settings": {
@@ -33,7 +34,8 @@
           "css": false,
           "SQL": false
         },
-        "chat.agent.enabled": false
+        "chat.agent.enabled": false,
+        "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python"
       },
       "extensions": [
         "bierner.markdown-mermaid",
@@ -52,11 +54,11 @@
         "streetsidesoftware.code-spell-checker",
         "tal7aouy.icons",
         "saeris.markdown-github-alerts",
-        "yy0931.vscode-sqlite3-editor"       
+        "yy0931.vscode-sqlite3-editor"
       ]
     }
   },
-  "forwardPorts": [5000],  // Add the port your Flask app runs on, or others as needed
+  "forwardPorts": [5000], // Add the port your Flask app runs on, or others as needed
   "portsAttributes": {
     "5000": {
       "label": "Flask App",
