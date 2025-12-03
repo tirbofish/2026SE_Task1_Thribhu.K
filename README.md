@@ -2,6 +2,15 @@
 
 This Flask template has been built from the ground up to be a secure Progressive Web App. It includes a secure form and Bootstrap sample components ready to be connected to a SQLite3 database. All minimum PWA standards have been integrated, and placeholder images have been provided for all the icon and image components.
 
+## How to run
+
+This project uses `uv` to run this project. `uv` automatically deals with
+dependencies, so that is why it is used
+
+```bash
+uv run src/main.py
+```
+
 ## Dependencies
 
 - VSCode or GitHub Codespaces (preconfigured for docker)
