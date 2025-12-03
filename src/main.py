@@ -16,7 +16,7 @@ def add():
     """Adds a log to the list"""
 
     try:
-        data = request.get_json()
+        data = request.form
         id = dbHandler.add_log(data)
         return jsonify({"message": "Log successfully added", "id": f"{str(id)}"}), 201
     except Exception as e:
