@@ -16,6 +16,10 @@ app.config['JWT_COOKIE_SECURE'] = False
 app.config['JWT_COOKIE_CSRF_PROTECT'] = False
 app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(days=1)
 
+@app.route("/api/ping")
+def ping():
+    return jsonify("Pong!")
+
 @app.route("/api/list", methods=["GET"])
 @jwt_required()
 def list():
@@ -89,6 +93,74 @@ def fetch(log_id):
         app.logger.error(f"Error occurred: {e}")
         return jsonify({"message": f"Failed to fetch log {str(log_id)}", "cause": str(e)}), 500
 
+@app.route("/api/edit/<int:log_id>", methods=["PUT"])
+@jwt_required()
+def edit(log_id):
+    """Allows you to edit a specific log. 
+    
+    Items available to change:
+    - time_user_logged
+    - name
+    - description
+    
+    The API will not allow you to change the non-listed items. 
+    
+    Requires a JWT token for authentication
+    """
+    
+    user_id = get_jwt_identity()
+    
+    try:
+        data = request.form
+        
+        existing_log = dbHandler.fetch_one_devlog(log_id)
+        if existing_log is None:
+            return jsonify({"message": f"Log [{log_id}] not found"}), 404
+        
+        update_fields = []
+        params = []
+        
+        if 'time_user_logged' in data:
+            update_fields.append("time_user_logged = ?")
+            params.append(data['time_user_logged'])
+        
+        if 'name' in data:
+            update_fields.append("name = ?")
+            params.append(data['name'])
+        
+        if 'description' in data:
+            update_fields.append("description = ?")
+            params.append(data['description'])
+        
+        if not update_fields:
+            return jsonify({"message": "No fields provided to update"}), 400
+        
+        params.append(log_id)
+        
+        conn = sqlite3.connect("databaseFiles/mono.db")
+        cur = conn.cursor()
+        
+        query = f"UPDATE devlogs SET {', '.join(update_fields)} WHERE id = ?"
+        cur.execute(query, params)
+        
+        conn.commit()
+        row_count = cur.rowcount
+        conn.close()
+        
+        if row_count == 0:
+            return jsonify({"message": "Log not found or no changes made"}), 404
+        
+        return jsonify({
+            "message": "Log successfully updated",
+            "id": log_id
+        }), 200
+    except Exception as e:
+        app.logger.error(f"Error occurred: {e}")
+        return jsonify({
+            "message": "Log failed to be updated",
+            "cause": str(e)
+        }), 500
+
 @app.route("/api/register", methods=["POST"])
 def register():
     """Registers a user and adds to the `users` database. 
@@ -148,8 +220,10 @@ def register():
         return response, 201
         
     except sqlite3.IntegrityError:
+        app.logger.error("Error: User already exists")
         return jsonify({"message": "User already exists"}), 400
     except Exception as e:
+        app.logger.error(f"Error while creating user: {e}")
         return jsonify({"message": "Error while creating user", "cause": str(e)}), 400
 
 @app.route("/api/login", methods=["POST"])
@@ -173,6 +247,7 @@ def login():
         user = cur.fetchone()
         conn.close()
     except Exception as e:
+        app.logger.error(f"Error while attempting to login: {e}")
         return jsonify({'message': 'Error while attempting to login', 'cause': str(e)})
     
     if not user or not bcrypt.checkpw(password.encode(), user['password_hash'].encode()):
