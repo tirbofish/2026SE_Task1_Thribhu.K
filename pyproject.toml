@@ -4,4 +4,12 @@ version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.11"
-dependencies = ["Flask", "bcrypt", "flask_wtf", "flask-csp", "requests"]
+dependencies = [
+    "Flask",
+    "bcrypt",
+    "flask_wtf",
+    "flask-csp",
+    "requests",
+    "flask-jwt-extended>=4.7.1",
+    "python-dotenv>=1.2.1",
+]

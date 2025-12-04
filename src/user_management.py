@@ -23,7 +23,7 @@ def prepare(log: Logger):
             time_user_logged REAL NOT NULL,
             name TEXT NOT NULL,
             user_id INTEGER NOT NULL,
-            description TEXT  -- Removed trailing comma
+            description TEXT
         );
         """
     )
@@ -33,7 +33,8 @@ def prepare(log: Logger):
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL,
-            email TEXT NOT NULL  -- Removed trailing comma
+            email TEXT UNIQUE NOT NULL,
+            password_hash TEXT NOT NULL
         );
         """
     )
@@ -56,7 +57,7 @@ def fetch_devlogs():
     return [dict(row) for row in rows]
 
 
-def add_log(data):
+def add_log(data, user_id):
     conn = sql.connect("databaseFiles/mono.db")
     cur = conn.cursor()
 
@@ -68,7 +69,7 @@ def add_log(data):
         (
             data["time_user_logged"],
             data["name"],
-            data["user_id"],
+            user_id,
             data.get("description"),
         ),
     )
@@ -94,3 +95,27 @@ def remove_log(log_id):
     conn.close()
 
     return row_count
+
+def fetch_one_devlog(log_id):
+    conn = sql.connect("databaseFiles/mono.db")
+    conn.row_factory = sql.Row
+    cur = conn.cursor()
+    
+    cur.execute("SELECT * FROM devlogs WHERE id = ?", (log_id,))
+    row = cur.fetchone()
+    
+    conn.close()
+    
+    return dict(row) if row else None
+
+def get_user_by_email(email):
+    conn = sql.connect("databaseFiles/mono.db")
+    conn.row_factory = sql.Row
+    cur = conn.cursor()
+    
+    cur.execute("SELECT * FROM users WHERE email = ?", (email,))
+    row = cur.fetchone()
+    
+    conn.close()
+    
+    return dict(row) if row else None
