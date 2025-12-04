@@ -2,7 +2,6 @@ import sqlite3 as sql
 from logging import Logger
 from flask import jsonify
 
-
 def prepare(log: Logger):
     """Prepares the database by populating it with the required data.
 

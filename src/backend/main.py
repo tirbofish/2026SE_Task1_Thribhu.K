@@ -1,7 +1,7 @@
 import endpoints
 from flask import Flask, jsonify
 from flask_jwt_extended import JWTManager
-import user_management as dbHandler
+import db_handler as dbHandler
 from dotenv import load_dotenv
 from datetime import timedelta
 import os

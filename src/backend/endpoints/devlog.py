@@ -2,7 +2,7 @@ from flask import Flask
 import sqlite3
 from flask import jsonify, request
 from flask_jwt_extended import jwt_required, get_jwt_identity
-import user_management as dbHandler
+import db_handler as dbHandler
 
 def __register_routes(app: Flask):
     """Registers all the routes that are related to devlog manipulation"""

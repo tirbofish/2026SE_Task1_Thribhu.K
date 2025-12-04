@@ -1,4 +1,36 @@
-# Secure Flask Bootstrap PWA Template
+# Secure Flask Bootstrap PWA - LoperLog
+
+(Deve)**LoperLog** is a logger for a developer for logging their milestones and progress
+to look over . Made by Thribhu Krishnan (fully). 
+
+## How to run
+
+This project uses `uv` to run this project for dependency management. 
+
+There are two components to LoperLop: The frontend and the backend. 
+
+### Backend
+The backend deals with the API and the database, and can be configured to
+your own company or teams settings. It can be self-hosted if you wish. 
+
+To run, run this simple bash cmd:
+```bash
+uv run src/backend/main.py
+```
+
+This should launch a Flask server. 
+
+### Frontend
+
+There is only one unified frontend, as provided by LoperLog. However in the case you want to self host yourself, it is simple to do. 
+
+```bash
+uv run src/frontend/main.py
+```
+<!-- wow how original is that command>
+
+
+<!-- # Secure Flask Bootstrap PWA Template
 
 This Flask template has been built from the ground up to be a secure Progressive Web App. It includes a secure form and Bootstrap sample components ready to be connected to a SQLite3 database. All minimum PWA standards have been integrated, and placeholder images have been provided for all the icon and image components.
 
@@ -63,4 +95,4 @@ uv run src/main.py
 - [SQLite](https://docs.python.org/3/library/sqlite3.html) has been provided for database design
 
 > [!TIP]
-> Developers should [monitor Bootstrap 5.3.3 for discovered vulnerabilities](https://security.snyk.io/package/npm/bootstrap) and patch or update as needed.
+> Developers should [monitor Bootstrap 5.3.3 for discovered vulnerabilities](https://security.snyk.io/package/npm/bootstrap) and patch or update as needed. -->
