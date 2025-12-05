@@ -4,9 +4,11 @@ from flask_jwt_extended import JWTManager
 import db_handler as dbHandler
 from dotenv import load_dotenv
 from datetime import timedelta
+from flask_cors import CORS
 import os
 
 app = Flask(__name__)
+CORS(app)
 jwt = JWTManager(app)
 
 app.config['SECRET_KEY'] = os.getenv("SECRET_KEY")

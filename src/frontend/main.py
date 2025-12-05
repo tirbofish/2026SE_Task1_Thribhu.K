@@ -22,6 +22,8 @@ def auth_redirect():
     mode = request.args.get("mode", "login")
     return render_template("auth_redirect.html", user_name=user_name, mode=mode)
 
+# ----------------- REDIRECTS -------------------------
+
 @app.route("/index.<path:extension>")
 def redirect_index(extension):
     return redirect(url_for('index'), code=301)

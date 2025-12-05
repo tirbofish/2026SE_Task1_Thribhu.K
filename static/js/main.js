@@ -2,41 +2,64 @@ function loginRedirect() {
     window.location.href = "/login";
 }
 
+const loginMessageEl = document.getElementById("loginMessage");
+function showLoginMessage(message = "", isError = true) {
+    if (!loginMessageEl) return;
+    loginMessageEl.textContent = message;
+    loginMessageEl.hidden = !message;
+    loginMessageEl.classList.toggle("text-danger", isError);
+    loginMessageEl.classList.toggle("text-success", !isError);
+}
+
 async function handleLogin(event) {
     if (event) event.preventDefault();
+    showLoginMessage("");
 
-    const loginForm = document.getElementById("loginForm");
     const endpointInput = document.getElementById("apiEndpoint");
     const emailInput = document.getElementById("email");
     const passwordInput = document.getElementById("password");
 
-    if (!loginForm || !endpointInput || !emailInput || !passwordInput) {
-        console.error("Login form elements missing");
+    if (!endpointInput || !emailInput || !passwordInput) {
+        showLoginMessage("Login form elements missing.");
         return;
     }
 
-    const base = (endpointInput.value || "http://127.0.0.1:5000").replace(/\/$/, "");
+    const baseEndpoint = (endpointInput.value || "http://127.0.0.1:5000").trim().replace(/\/$/, "");
     const email = emailInput.value.trim();
     const password = passwordInput.value;
 
+    if (!email || !password || !baseEndpoint) {
+        showLoginMessage("Email, password, and API endpoint are required.");
+        return;
+    }
+
     try {
-        const res = await fetch(`${base}/api/login`, {
+        const formData = new URLSearchParams();
+        formData.append("email", email);
+        formData.append("password", password);
+
+        const response = await fetch(`${baseEndpoint}/api/login`, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ email, password }),
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: formData.toString(),
         });
 
-        if (!res.ok) {
-            alert("Login failed");
+        if (!response.ok) {
+            let errorText = "Login failed. Please try again.";
+            try {
+                const errorPayload = await response.json();
+                errorText = errorPayload.message || errorPayload.error || errorText;
+            } catch {
+                errorText = `${errorText} (HTTP ${response.status})`;
+            }
+            showLoginMessage(errorText);
             return;
         }
 
-        const data = await res.json().catch(() => ({}));
-        const userName = data.name || email.split("@")[0];
-        window.location.href = `/auth-redirect?mode=login&name=${encodeURIComponent(userName)}`;
+        window.location.href = "/auth-redirect";
     } catch (err) {
         console.error("Login request failed", err);
-        alert("Unable to reach the API endpoint.");
+        showLoginMessage("Unable to reach the server. Check the API endpoint and try again.");
     }
 }
 
