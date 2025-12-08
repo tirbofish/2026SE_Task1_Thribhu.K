@@ -2,6 +2,7 @@ import sqlite3 as sql
 from logging import Logger
 from flask import jsonify
 
+
 def prepare(log: Logger):
     """Prepares the database by populating it with the required data.
 
@@ -32,6 +33,7 @@ def prepare(log: Logger):
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL,
+            username TEXT UNIQUE NOT NULL,
             email TEXT UNIQUE NOT NULL,
             password_hash TEXT NOT NULL
         );
@@ -95,26 +97,28 @@ def remove_log(log_id):
 
     return row_count
 
+
 def fetch_one_devlog(log_id):
     conn = sql.connect("databaseFiles/mono.db")
     conn.row_factory = sql.Row
     cur = conn.cursor()
-    
+
     cur.execute("SELECT * FROM devlogs WHERE id = ?", (log_id,))
     row = cur.fetchone()
-    
+
     conn.close()
-    
+
     return dict(row) if row else None
+
 
 def get_user_by_email(email):
     conn = sql.connect("databaseFiles/mono.db")
     conn.row_factory = sql.Row
     cur = conn.cursor()
-    
+
     cur.execute("SELECT * FROM users WHERE email = ?", (email,))
     row = cur.fetchone()
-    
+
     conn.close()
-    
+
     return dict(row) if row else None

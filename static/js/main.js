@@ -65,6 +65,75 @@ async function handleLogin(event) {
     }
 }
 
+async function handleRegister(event) {
+    if (event) event.preventDefault();
+    showLoginMessage("");
+
+    const target = event?.currentTarget;
+    const form =
+        target instanceof HTMLFormElement
+            ? target
+            : target instanceof HTMLElement
+                ? target.closest("form")
+                : document.getElementById("registerForm");
+
+    if (!form) {
+        showLoginMessage("Register form elements missing.");
+        return;
+    }
+
+    const formData = new FormData(form);
+    const endpointInput = form.querySelector("#registerEndpoint") || document.getElementById("apiEndpoint");
+    const baseEndpoint = (formData.get("apiEndpoint") || endpointInput?.value || "http://127.0.0.1:5000").trim().replace(/\/$/, "");
+    const name = (formData.get("name") || formData.get("fullName") || formData.get("registerName") || "").trim();
+    const email = (formData.get("registerEmail") || formData.get("email") || "").trim();
+    const username = (formData.get("registerUsername") || formData.get("username") || "").trim();
+    const password = formData.get("registerPassword") || formData.get("password") || "";
+    const confirmPassword = formData.get("confirmPassword") || formData.get("registerConfirmPassword") || "";
+
+    if (!name || !username || !email || !password || !baseEndpoint) {
+        showLoginMessage("Name, username, email, password, and API endpoint are required.");
+        return;
+    }
+
+    if (confirmPassword && password !== confirmPassword) {
+        showLoginMessage("Passwords do not match.");
+        return;
+    }
+
+    try {
+        const payload = new URLSearchParams();
+        payload.append("name", name);
+        payload.append("email", email);
+        payload.append("username", username);
+        payload.append("password", password);
+
+        const response = await fetch(`${baseEndpoint}/api/register`, {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: payload.toString(),
+        });
+
+        if (!response.ok) {
+            let errorText = "Registration failed. Please try again.";
+            try {
+                const errorPayload = await response.json();
+                errorText = errorPayload.message || errorPayload.error || errorText;
+            } catch {
+                errorText = `${errorText} (HTTP ${response.status})`;
+            }
+            showLoginMessage(errorText);
+            return;
+        }
+
+        showLoginMessage("Registration successful! You can log in now.", false);
+        form.reset();
+    } catch (err) {
+        console.error("Registration request failed", err);
+        showLoginMessage("Unable to reach the server. Check the API endpoint and try again.");
+    }
+}
+
 window.loginRedirect = loginRedirect;
 window.handleLogin = handleLogin;
 
@@ -78,5 +147,9 @@ document.addEventListener("DOMContentLoaded", () => {
     const savedEndpoint = localStorage.getItem("baseEndpoint");
     if (endpointInput && savedEndpoint) {
         endpointInput.value = savedEndpoint;
+        
+    const registerForm = document.getElementById("registerForm");
+    if (registerForm) {
+        registerForm.addEventListener("submit", handleRegister);
     }
 });
