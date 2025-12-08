@@ -33,6 +33,8 @@ async function handleLogin(event) {
         return;
     }
 
+    localStorage.setItem("baseEndpoint", baseEndpoint);
+
     try {
         const formData = new URLSearchParams();
         formData.append("email", email);
@@ -70,5 +72,11 @@ document.addEventListener("DOMContentLoaded", () => {
     const loginForm = document.getElementById("loginForm");
     if (loginForm) {
         loginForm.addEventListener("submit", handleLogin);
+    }
+
+    const endpointInput = document.getElementById("apiEndpoint");
+    const savedEndpoint = localStorage.getItem("baseEndpoint");
+    if (endpointInput && savedEndpoint) {
+        endpointInput.value = savedEndpoint;
     }
 });

@@ -123,3 +123,34 @@ def __register_routes(app: Flask):
         )
         
         return response, 200
+    
+    @app.route("/api/whoami", methods=["GET"])
+    @jwt_required()
+    def whoami():
+        """Returns the user information of your own user
+        
+        Requires for you to be already authenticated
+        """
+        user_id = get_jwt_identity()
+        
+        try:
+            conn = sqlite3.connect("databaseFiles/mono.db")
+            conn.row_factory = sqlite3.Row
+            cur = conn.cursor()
+            
+            cur.execute("SELECT id, name, email FROM users WHERE id = ?", (user_id,))
+            user = cur.fetchone()
+            conn.close()
+            
+            if not user:
+                return jsonify({"message": "User not found"}), 404
+            
+            return jsonify({
+                "id": user["id"],
+                "name": user["name"],
+                "email": user["email"]
+            }), 200
+            
+        except Exception as e:
+            app.logger.error(f"Error in whoami: {e}")
+            return jsonify({"message": "Error fetching user info"}), 500
