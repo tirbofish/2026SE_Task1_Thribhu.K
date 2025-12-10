@@ -1,4 +1,5 @@
 from flask import Flask, render_template, redirect, url_for, request
+import requests as req
 
 app = Flask(__name__, 
     template_folder='../../templates',
@@ -18,9 +19,8 @@ def register():
 
 @app.get("/auth-redirect")
 def auth_redirect():
-    user_name = request.args.get("name", "User")
     mode = request.args.get("mode", "login")
-    return render_template("auth_redirect.html", user_name=user_name, mode=mode)
+    return render_template("auth_redirect.html", mode=mode)
 
 # ----------------- REDIRECTS -------------------------
 

@@ -13,12 +13,36 @@
     <div class="min-vh-100 d-flex align-items-center justify-content-center">
         <div class="card shadow-sm p-4 text-center" style="max-width: 420px; width: 100%;">
             {% if mode == "login" %}
-                <h1 class="h4 mb-3">Welcome back {{ user_name }}</h1>
+                <h1 class="h4 mb-3">Welcome back <span id="userName">...</span></h1>
             {% else %}
-                <h1 class="h4 mb-3">Welcome to LoperLog {{ user_name }}</h1>
+                <h1 class="h4 mb-3">Welcome to LoperLog <span id="userName">...</span></h1>
             {% endif %}
             <p class="text-muted">Redirecting you to the dashboard...</p>
         </div>
     </div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", async () => {
+            const baseEndpoint = localStorage.getItem("baseEndpoint") || "http://127.0.0.1:5000";
+            const userNameEl = document.getElementById("userName");
+
+            try {
+                const response = await fetch(`${baseEndpoint}/api/whoami`, {
+                    method: "GET",
+                    credentials: "include"
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    userNameEl.textContent = data.username || data.name || "User";
+                } else {
+                    userNameEl.textContent = "User";
+                }
+            } catch (err) {
+                console.error("Failed to fetch user info", err);
+                userNameEl.textContent = "User";
+            }
+        });
+    </script>
 </body>
 </html>

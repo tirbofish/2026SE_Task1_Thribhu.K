@@ -147,7 +147,8 @@ document.addEventListener("DOMContentLoaded", () => {
     const savedEndpoint = localStorage.getItem("baseEndpoint");
     if (endpointInput && savedEndpoint) {
         endpointInput.value = savedEndpoint;
-        
+    }
+    
     const registerForm = document.getElementById("registerForm");
     if (registerForm) {
         registerForm.addEventListener("submit", handleRegister);
