@@ -13,4 +13,5 @@ dependencies = [
     "flask-jwt-extended>=4.7.1",
     "python-dotenv>=1.2.1",
     "flask-cors>=6.0.1",
+    "asyncio>=4.0.0",
 ]

@@ -91,6 +91,18 @@ async function handleRegister(event) {
     const password = formData.get("registerPassword") || formData.get("password") || "";
     const confirmPassword = formData.get("confirmPassword") || formData.get("registerConfirmPassword") || "";
 
+    var missing = ""
+
+    if (!name) {
+        missing += "Name, "
+    }
+
+    if (!username) {
+        missing += "Username"
+    }
+
+
+
     if (!name || !username || !email || !password || !baseEndpoint) {
         showLoginMessage("Name, username, email, password, and API endpoint are required.");
         return;
