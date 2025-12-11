@@ -3,7 +3,7 @@ import sqlite3
 from flask import jsonify, request
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity, get_jwt
 import bcrypt
-from shared import BLOCKLIST
+from shared import BLOCKLIST, DB_PATH
 
 
 def __register_routes(app: Flask):
@@ -26,12 +26,13 @@ def __register_routes(app: Flask):
         username = data.get("username")
 
         if not email or not password or not name:
-            return jsonify({"message": "Name, email, and password are required"}), 400
+            return jsonify({"message": "Name, email, username, and password are required"}), 400
 
         password_hash = bcrypt.hashpw(password.encode(), bcrypt.gensalt())
 
+        conn = None
         try:
-            conn = sqlite3.connect("databaseFiles/mono.db")
+            conn = sqlite3.connect(DB_PATH)
             cur = conn.cursor()
 
             cur.execute(
@@ -42,7 +43,6 @@ def __register_routes(app: Flask):
             user_id = cur.lastrowid
 
             conn.commit()
-            conn.close()
 
             access_token = create_access_token(
                 identity=str(user_id),
@@ -75,6 +75,9 @@ def __register_routes(app: Flask):
         except Exception as e:
             app.logger.error(f"Error while creating user: {e}")
             return jsonify({"message": "Error while creating user", "cause": str(e)}), 400
+        finally:
+            if conn:
+                conn.close()
 
     @app.route("/api/login", methods=["POST"])
     def login():
@@ -85,8 +88,9 @@ def __register_routes(app: Flask):
         if not email or not password:
             return jsonify({'message': 'Email and password required'}), 400
 
+        conn = None
         try:
-            conn = sqlite3.connect("databaseFiles/mono.db")
+            conn = sqlite3.connect(DB_PATH)
             conn.row_factory = sqlite3.Row
             cur = conn.cursor()
 
@@ -95,10 +99,12 @@ def __register_routes(app: Flask):
                 (email,)
             )
             user = cur.fetchone()
-            conn.close()
         except Exception as e:
             app.logger.error(f"Error while attempting to login: {e}")
-            return jsonify({'message': 'Error while attempting to login', 'cause': str(e)})
+            return jsonify({'message': 'Error while attempting to login', 'cause': str(e)}), 500
+        finally:
+            if conn:
+                conn.close()
 
         if not user or not bcrypt.checkpw(password.encode(), user['password_hash'].encode()):
             return jsonify({'message': 'Invalid email or password'}), 401
@@ -137,15 +143,15 @@ def __register_routes(app: Flask):
         """
         user_id = get_jwt_identity()
 
+        conn = None
         try:
-            conn = sqlite3.connect("databaseFiles/mono.db")
+            conn = sqlite3.connect(DB_PATH)
             conn.row_factory = sqlite3.Row
             cur = conn.cursor()
 
             cur.execute(
                 "SELECT id, name, email FROM users WHERE id = ?", (user_id,))
             user = cur.fetchone()
-            conn.close()
 
             if not user:
                 return jsonify({"message": "User not found"}), 404
@@ -159,6 +165,9 @@ def __register_routes(app: Flask):
         except Exception as e:
             app.logger.error(f"Error in whoami: {e}")
             return jsonify({"message": "Error fetching user info"}), 500
+        finally:
+            if conn:
+                conn.close()
 
     @app.route("/api/logout", methods=["POST"])
     @jwt_required()

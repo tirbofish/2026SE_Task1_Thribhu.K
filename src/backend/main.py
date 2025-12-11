@@ -14,11 +14,10 @@ import os
 # If you are running this on a code space, make sure the port is visible to the public (API).
 # The frontend does not need to be public
 
-app = Flask(__name__)
+app = Flask(__name__, template_folder='../../templates',
+            static_folder='../../static')
 CORS(app, supports_credentials=True)
 jwt = JWTManager(app)
-
-# Import blocklist from shared module to avoid circular imports
 
 
 @jwt.token_in_blocklist_loader

@@ -1,6 +1,7 @@
 import sqlite3 as sql
 from logging import Logger
 from flask import jsonify
+from shared import DB_PATH
 
 
 def prepare(log: Logger):
@@ -12,7 +13,7 @@ def prepare(log: Logger):
     this app decides to think for itself.
     """
 
-    conn = sql.connect("databaseFiles/mono.db")
+    conn = sql.connect(DB_PATH)
     cur = conn.cursor()
     log.info("Created database file")
 
@@ -46,7 +47,7 @@ def prepare(log: Logger):
 
 
 def fetch_devlogs():
-    conn = sql.connect("databaseFiles/mono.db")
+    conn = sql.connect(DB_PATH)
     conn.row_factory = sql.Row
     cur = conn.cursor()
 
@@ -59,7 +60,7 @@ def fetch_devlogs():
 
 
 def add_log(data, user_id):
-    conn = sql.connect("databaseFiles/mono.db")
+    conn = sql.connect(DB_PATH)
     cur = conn.cursor()
 
     cur.execute(
@@ -84,7 +85,7 @@ def add_log(data, user_id):
 
 
 def remove_log(log_id):
-    conn = sql.connect("databaseFiles/mono.db")
+    conn = sql.connect(DB_PATH)
     cur = conn.cursor()
 
     cur.execute("DELETE FROM devlogs WHERE id = ?", (log_id,))
@@ -99,7 +100,7 @@ def remove_log(log_id):
 
 
 def fetch_one_devlog(log_id):
-    conn = sql.connect("databaseFiles/mono.db")
+    conn = sql.connect(DB_PATH)
     conn.row_factory = sql.Row
     cur = conn.cursor()
 
@@ -112,7 +113,7 @@ def fetch_one_devlog(log_id):
 
 
 def get_user_by_email(email):
-    conn = sql.connect("databaseFiles/mono.db")
+    conn = sql.connect(DB_PATH)
     conn.row_factory = sql.Row
     cur = conn.cursor()
 
