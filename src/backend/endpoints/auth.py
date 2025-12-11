@@ -1,8 +1,9 @@
 from flask import Flask
 import sqlite3
 from flask import jsonify, request
-from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
+from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity, get_jwt
 import bcrypt
+from shared import BLOCKLIST
 
 
 def __register_routes(app: Flask):
@@ -158,3 +159,12 @@ def __register_routes(app: Flask):
         except Exception as e:
             app.logger.error(f"Error in whoami: {e}")
             return jsonify({"message": "Error fetching user info"}), 500
+
+    @app.route("/api/logout", methods=["POST"])
+    @jwt_required()
+    def logout():
+        jti = get_jwt()["jti"]
+        BLOCKLIST.add(jti)
+        response = jsonify({"message": "Logout successful"})
+        response.delete_cookie('access_token_cookie')
+        return response, 200

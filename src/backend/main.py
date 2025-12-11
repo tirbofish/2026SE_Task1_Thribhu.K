@@ -1,3 +1,4 @@
+from shared import BLOCKLIST
 from flask import Flask, jsonify
 import endpoints
 from flask import Flask, jsonify, request, render_template
@@ -16,6 +17,15 @@ import os
 app = Flask(__name__)
 CORS(app, supports_credentials=True)
 jwt = JWTManager(app)
+
+# Import blocklist from shared module to avoid circular imports
+
+
+@jwt.token_in_blocklist_loader
+def check_if_token_revoked(jwt_header, jwt_payload):
+    jti = jwt_payload["jti"]
+    return jti in BLOCKLIST
+
 
 app.config['SECRET_KEY'] = os.getenv("SECRET_KEY")
 app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY")
