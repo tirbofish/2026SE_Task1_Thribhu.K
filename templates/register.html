@@ -14,10 +14,13 @@
 </head>
 <body>
     <div class="min-vh-100 d-flex align-items-center justify-content-center">
-        <form id="registerForm" method="POST" class="card p-4 shadow-sm" style="max-width: 500px; width: 100%">
+        <form id="registerForm" method="POST" action="{{ url_for('register') }}" class="card p-4 shadow-sm" style="max-width: 500px; width: 100%">
             <div class="d-flex align-items-center justify-content-center">
                 <h1>Register to LoperLog</h1>
             </div>
+            {% if message %}
+                <div class="alert alert-{{ message_type or 'danger' }} mt-3" role="alert">{{ message }}</div>
+            {% endif %}
             <div class="mb-3">
                 <label for="name" class="form-label">Full Name</label>
                 <input
@@ -74,22 +77,21 @@
                 </div>
                 <div class="col-6">
                     <button
-                        type="button"
+                        type="submit"
                         class="btn btn-primary w-100"
-                        onclick="handleRegister(event)"
                     >
                         Register
                     </button>
                 </div>
             </div>
-            <div id="loginMessage" class="text-danger small mb-3" hidden></div>
             <div class="mb-3">
                 <label for="apiEndpoint" class="form-label">API endpoint</label>
                 <input
                     type="text"
                     class="form-control"
                     id="apiEndpoint"
-                    value="http://127.0.0.1:5000"
+                    name="apiEndpoint"
+                    value="{{ api_endpoint or 'http://127.0.0.1:5000' }}"
                     placeholder="http://host:port"
                     required
                 />
@@ -101,7 +103,6 @@
         </form>
     </div>
 
-    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
     <!-- Bootstrap stuff -->
     <script
         src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"

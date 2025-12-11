@@ -1,40 +1,212 @@
-from flask import Flask, render_template, redirect, url_for, request
+import os
+from flask import Flask, render_template, redirect, url_for, request, session, make_response
 import requests as req
 
-app = Flask(__name__, 
+DEFAULT_API_ENDPOINT = "http://127.0.0.1:5000"
+API_TIMEOUT_SECONDS = 8
+ACCESS_COOKIE_NAME = "access_token_cookie"
+
+app = Flask(
+    __name__,
     template_folder='../../templates',
-    static_folder='../../static') 
+    static_folder='../../static'
+)
+
+app.secret_key = os.getenv("FRONTEND_SECRET_KEY", "dev-frontend-secret")
+
+
+def _clean_endpoint(raw_endpoint: str | None) -> str:
+    endpoint = (raw_endpoint or DEFAULT_API_ENDPOINT).strip()
+    return endpoint[:-1] if endpoint.endswith('/') else endpoint
+
+
+def _build_error_message(api_response):
+    try:
+        payload = api_response.json()
+        if isinstance(payload, dict) and payload.get("message"):
+            return payload["message"]
+    except Exception:
+        pass
+    return f"Request failed with status {api_response.status_code}"
+
 
 @app.route("/")
 def index():
     return render_template("index.html")
 
-@app.get("/login")
-def login():
-    return render_template("login.html")
 
-@app.get("/register")
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    api_endpoint = session.get("api_endpoint", DEFAULT_API_ENDPOINT)
+
+    if request.method == "GET":
+        return render_template("login.html", api_endpoint=api_endpoint)
+
+    email = (request.form.get("email") or "").strip()
+    password = request.form.get("password") or ""
+    api_endpoint = _clean_endpoint(request.form.get("apiEndpoint"))
+
+    if not email or not password:
+        return render_template(
+            "login.html",
+            message="Email and password are required",
+            message_type="danger",
+            api_endpoint=api_endpoint
+        )
+
+    try:
+        response = req.post(
+            f"{api_endpoint}/api/login",
+            data={"email": email, "password": password},
+            timeout=API_TIMEOUT_SECONDS
+        )
+    except req.RequestException as exc:
+        return render_template(
+            "login.html",
+            message=f"Unable to reach API: {exc}",
+            message_type="danger",
+            api_endpoint=api_endpoint
+        )
+
+    if response.status_code != 200:
+        return render_template(
+            "login.html",
+            message=_build_error_message(response),
+            message_type="danger",
+            api_endpoint=api_endpoint
+        )
+
+    token = response.cookies.get(ACCESS_COOKIE_NAME)
+    if not token:
+        return render_template(
+            "login.html",
+            message="Login succeeded but token cookie missing in response",
+            message_type="danger",
+            api_endpoint=api_endpoint
+        )
+
+    session["api_endpoint"] = api_endpoint
+
+    redirect_response = make_response(
+        redirect(url_for("auth_redirect", mode="login")))
+    redirect_response.set_cookie(
+        ACCESS_COOKIE_NAME,
+        token,
+        httponly=True,
+        secure=False,
+        samesite="Lax",
+        max_age=86400
+    )
+    return redirect_response
+
+
+@app.route("/register", methods=["GET", "POST"])
 def register():
-    return render_template("register.html")
+    api_endpoint = session.get("api_endpoint", DEFAULT_API_ENDPOINT)
+
+    if request.method == "GET":
+        return render_template("register.html", api_endpoint=api_endpoint)
+
+    name = (request.form.get("name") or "").strip()
+    username = (request.form.get("username") or "").strip()
+    email = (request.form.get("email") or "").strip()
+    password = request.form.get("password") or ""
+    api_endpoint = _clean_endpoint(request.form.get("apiEndpoint"))
+
+    missing = [
+        label for label, value in (
+            ("name", name),
+            ("username", username),
+            ("email", email),
+            ("password", password)
+        ) if not value
+    ]
+    if missing:
+        return render_template(
+            "register.html",
+            message=f"Missing required fields: {', '.join(missing)}",
+            message_type="danger",
+            api_endpoint=api_endpoint
+        )
+
+    try:
+        response = req.post(
+            f"{api_endpoint}/api/register",
+            data={
+                "name": name,
+                "username": username,
+                "email": email,
+                "password": password
+            },
+            timeout=API_TIMEOUT_SECONDS
+        )
+    except req.RequestException as exc:
+        return render_template(
+            "register.html",
+            message=f"Unable to reach API: {exc}",
+            message_type="danger",
+            api_endpoint=api_endpoint
+        )
+
+    if response.status_code not in (200, 201):
+        return render_template(
+            "register.html",
+            message=_build_error_message(response),
+            message_type="danger",
+            api_endpoint=api_endpoint
+        )
+
+    token = response.cookies.get(ACCESS_COOKIE_NAME)
+    if not token:
+        return render_template(
+            "register.html",
+            message="Registration succeeded but token cookie missing in response",
+            message_type="danger",
+            api_endpoint=api_endpoint
+        )
+
+    session["api_endpoint"] = api_endpoint
+
+    redirect_response = make_response(
+        redirect(url_for("auth_redirect", mode="register")))
+    redirect_response.set_cookie(
+        ACCESS_COOKIE_NAME,
+        token,
+        httponly=True,
+        secure=False,
+        samesite="Lax",
+        max_age=86400
+    )
+    return redirect_response
+
 
 @app.get("/auth-redirect")
 def auth_redirect():
+    api_endpoint = session.get("api_endpoint", DEFAULT_API_ENDPOINT)
     mode = request.args.get("mode", "login")
-    return render_template("auth_redirect.html", mode=mode)
+    username = None
 
-# ----------------- REDIRECTS -------------------------
+    token = request.cookies.get(ACCESS_COOKIE_NAME)
+    if token:
+        try:
+            whoami_resp = req.get(
+                f"{api_endpoint}/api/whoami",
+                cookies={ACCESS_COOKIE_NAME: token},
+                timeout=API_TIMEOUT_SECONDS
+            )
+            if whoami_resp.ok:
+                data = whoami_resp.json()
+                username = data.get("name") or data.get("username")
+        except req.RequestException:
+            pass
 
-@app.route("/index.<path:extension>")
-def redirect_index(extension):
-    return redirect(url_for('index'), code=301)
+    return render_template(
+        "auth_redirect.html",
+        api_endpoint=api_endpoint,
+        mode=mode,
+        username=username or "..."
+    )
 
-@app.route("/login.<path:extension>")
-def redirect_login(extension):
-    return redirect(url_for('login'), code=301)
-
-@app.route("/register.<path:extension>")
-def redirect_register(extension):
-    return redirect(url_for('login'), code=301)
 
 if __name__ == '__main__':
     app.run(debug=True, host="0.0.0.0", port=4200)
