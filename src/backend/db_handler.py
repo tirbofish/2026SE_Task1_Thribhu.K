@@ -104,8 +104,8 @@ def prepare(log: Logger):
 
 
 
-def fetch_devlogs(user_id=None, project_id=None):
-    """Fetch all log entries, optionally filtered by user_id and/or project_id"""
+def fetch_devlogs(user_id=None, project_id=None, filters=None):
+    """Fetch all log entries, optionally filtered by user_id, project_id, and additional filters"""
     conn = sql.connect(DB_PATH)
     conn.row_factory = sql.Row
     cur = conn.cursor()
@@ -139,6 +139,11 @@ def fetch_devlogs(user_id=None, project_id=None):
     if project_id:
         conditions.append("l.project_id = ?")
         params.append(project_id)
+    
+    # Apply additional filters if provided
+    if filters:
+        from filters import apply_filters_to_query
+        query, conditions, params = apply_filters_to_query(query, conditions, params, filters)
     
     if conditions:
         query += " WHERE " + " AND ".join(conditions)

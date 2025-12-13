@@ -1,10 +1,7 @@
 from flask import Flask
-import sqlite3
 from flask import jsonify, request
 from flask_jwt_extended import jwt_required, get_jwt_identity
 import db_handler as dbHandler
-from shared import DB_PATH
-
 
 def __register_routes(app: Flask):
     """Registers all the routes that are related to devlog manipulation"""
@@ -65,16 +62,30 @@ def __register_routes(app: Flask):
     @jwt_required()
     def logs(project_id):
         """
-        GET: Lists all the log entries for the authenticated user in a specific project.
+        GET: Lists all the log entries for a user in a specific project.
         POST: Adds a log entry to a specific project
         
-        POST Body fields:
-        - start_time: datetime in Julian time or ISO format (when work started)
-        - end_time: datetime in Julian time or ISO format (when work ended)
+        GET 
+        
+        i recently added support for filtering like for searches:
+            - start_time_gt, start_time_gte, start_time_lt, start_time_lte
+            - end_time_gt, end_time_gte, end_time_lt, end_time_lte
+            - time_worked_min, time_worked_max (integers)
+            - log_timestamp_after, log_timestamp_before
+            - username (exact match)
+            - notes_contains (partial text search in developer_notes)
+            
+            Example: /api/2/logs?start_time_gt=2025-12-13 10:30:00&time_worked_min=30
+        
+        where _gte is 'greater than or equal' or '>=' (but the character is not used)
+        
+        POST body fields:
+        - start_time: datetime in ISO 8601 format (YYYY-MM-DD HH:MM:SS) (when work started)
+        - end_time: datetime in ISO 8601 format (YYYY-MM-DD HH:MM:SS) (when work ended)
         - time_worked_minutes: integer (total minutes worked on this task)
         - developer_notes: the notes in markdown
-        - log_timestamp: datetime (defaults to current timestamp if not provided) (optional)
-        - related_commits: array of commits (e.g., ["abc123", "def456"]) (optional)
+        - log_timestamp: datetime in ISO 8601 format (defaults to current timestamp if not provided) (optional)
+        - related_commits: array of commits (e.g., ["abc123", "def456"]), either in json or just a standard array (optional)
 
         Requires a JWT token
         """
@@ -91,7 +102,9 @@ def __register_routes(app: Flask):
                 return jsonify({"message": "Log failed to be added", "cause": str(e)}), 400
         else:
             try:
-                logs = dbHandler.fetch_devlogs(user_id=user_id, project_id=project_id)
+                from filters import parse_log_filters
+                filters = parse_log_filters()
+                logs = dbHandler.fetch_devlogs(user_id=user_id, project_id=project_id, filters=filters)
                 return jsonify(logs), 200
             except Exception as e:
                 app.logger.error(f"Error fetching logs: {e}")
