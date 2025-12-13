@@ -177,3 +177,22 @@ def __register_routes(app: Flask):
         response = jsonify({"message": "Logout successful"})
         response.delete_cookie('access_token_cookie')
         return response, 200
+
+    @app.route("/dashboard", methods=["GET"])
+    @jwt_required()
+    def dashboard():
+        """Renders the dashboard page for authenticated users"""
+        from flask import render_template
+        
+        # Get user info from JWT
+        user_id = get_jwt_identity()
+        jwt_data = get_jwt()
+        
+        # You can pass user data to the template
+        user_info = {
+            'id': user_id,
+            'name': jwt_data.get('name', ''),
+            'email': jwt_data.get('email', '')
+        }
+        
+        return render_template('dashboard.html', user=user_info)

@@ -40,7 +40,15 @@ def login():
     api_endpoint = session.get("api_endpoint", DEFAULT_API_ENDPOINT)
 
     if request.method == "GET":
-        return render_template("login.html", api_endpoint=api_endpoint)
+        redirect_message = request.args.get("message")
+        redirect_message_type = request.args.get("message_type", "info")
+        
+        return render_template(
+            "login.html", 
+            api_endpoint=api_endpoint,
+            redirect_message=redirect_message,
+            redirect_message_type=redirect_message_type
+        )
 
     email = (request.form.get("email") or "").strip()
     password = request.form.get("password") or ""
@@ -88,7 +96,7 @@ def login():
     session["api_endpoint"] = api_endpoint
 
     redirect_response = make_response(
-        redirect(url_for("auth_redirect", mode="login")))
+        redirect(url_for("dashboard")))
     redirect_response.set_cookie(
         ACCESS_COOKIE_NAME,
         token,
@@ -168,7 +176,7 @@ def register():
     session["api_endpoint"] = api_endpoint
 
     redirect_response = make_response(
-        redirect(url_for("auth_redirect", mode="register")))
+        redirect(url_for("dashboard")))
     redirect_response.set_cookie(
         ACCESS_COOKIE_NAME,
         token,
@@ -179,33 +187,32 @@ def register():
     )
     return redirect_response
 
-
-@app.get("/auth-redirect")
-def auth_redirect():
+@app.route("/dashboard", methods=["GET"])
+def dashboard():
     api_endpoint = session.get("api_endpoint", DEFAULT_API_ENDPOINT)
-    mode = request.args.get("mode", "login")
-    username = None
-
     token = request.cookies.get(ACCESS_COOKIE_NAME)
-    if token:
-        try:
-            whoami_resp = req.get(
-                f"{api_endpoint}/api/whoami",
-                cookies={ACCESS_COOKIE_NAME: token},
-                timeout=API_TIMEOUT_SECONDS
-            )
-            if whoami_resp.ok:
-                data = whoami_resp.json()
-                username = data.get("name") or data.get("username")
-        except req.RequestException:
-            pass
 
-    return render_template(
-        "auth_redirect.html",
-        api_endpoint=api_endpoint,
-        mode=mode,
-        username=username or "..."
-    )
+    if not token:
+        return redirect(url_for("login"))
+
+    try:
+        response = req.get(
+            f"{api_endpoint}/api/whoami",
+            cookies={ACCESS_COOKIE_NAME: token},
+            timeout=API_TIMEOUT_SECONDS
+        )
+    except req.RequestException as exc:
+        return render_template(
+            "dashboard.html",
+            message=f"Unable to reach API: {exc}",
+            message_type="danger"
+        )
+
+    if response.status_code != 200:
+        return redirect(url_for("login"))
+
+    user_data = response.json()
+    return render_template("dashboard.html", user=user_data)
 
 
 if __name__ == '__main__':

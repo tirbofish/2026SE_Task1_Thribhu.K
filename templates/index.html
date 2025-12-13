@@ -14,11 +14,14 @@
     />
     </head>
     <body>
-        <button class="login-button" onclick="loginRedirect()">Login</button>
-
-        
-
-        <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+        <div class="min-vh-100 d-flex align-items-center justify-content-center">
+            <div class="text-center">
+                <h1 class="display-4 mb-4">LoperLog</h1>
+                <div class="spinner-border" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+            </div>
+        </div>
 
         <!-- Bootstrap stuff -->
         <script
@@ -28,12 +31,27 @@
         ></script>
         <script>
             document.addEventListener("DOMContentLoaded", async () => {
+                // API endpoint is on port 5000 for /api/* calls
+                let apiEndpoint = localStorage.getItem('apiEndpoint');
+                if (!apiEndpoint) {
+                    apiEndpoint = 'http://127.0.0.1:5000';
+                }
+
                 try {
-                    const resp = await fetch("/api/whoami", { credentials: "include" });
-                    if (!resp.ok) {
+                    const resp = await fetch(`${apiEndpoint}/api/whoami`, { 
+                        credentials: "include",
+                        mode: 'cors'
+                    });
+                    
+                    if (resp.ok) {
+                        window.location.href = "/dashboard";
+                    } else if (resp.status === 401) {
+                        window.location.href = "/login";
+                    } else {
                         window.location.href = "/login";
                     }
                 } catch (err) {
+                    console.error("Error loading LoperLog:", err);
                     window.location.href = "/login";
                 }
             });

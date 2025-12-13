@@ -18,6 +18,9 @@
             <div class="d-flex align-items-center justify-content-center">
                 <h1>Sign in to LoperLog</h1>
             </div>
+            {% if redirect_message %}
+                <div class="alert alert-{{ redirect_message_type or 'info' }} mt-3" role="alert">{{ redirect_message }}</div>
+            {% endif %}
             {% if message %}
                 <div class="alert alert-{{ message_type or 'danger' }} mt-3" role="alert">{{ message }}</div>
             {% endif %}
