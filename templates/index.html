@@ -31,7 +31,6 @@
         ></script>
         <script>
             document.addEventListener("DOMContentLoaded", async () => {
-                // API endpoint is on port 5000 for /api/* calls
                 let apiEndpoint = localStorage.getItem('apiEndpoint');
                 if (!apiEndpoint) {
                     apiEndpoint = 'http://127.0.0.1:5000';

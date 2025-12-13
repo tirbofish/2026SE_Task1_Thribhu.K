@@ -1,3 +1,4 @@
+<!-- this is a template for me to copy over to other html templates. sets up the bootstrap stuff -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -13,7 +14,7 @@
     />
 </head>
 <body>
-    {% if message and message_type == 'danger' %}
+    {% if message %}
         <div class="min-vh-100 d-flex align-items-center justify-content-center p-4">
             <div class="alert alert-danger" role="alert" style="max-width: 600px;">
                 <h4 class="alert-heading">Error</h4>
@@ -32,10 +33,7 @@
         <!-- Main Content Area -->
         <div class="flex-grow-1 p-4">
             <div class="container-fluid">
-                <h1 class="mb-4">Welcome to LoperLog, {{ username }}</h1>
-                <div class="row">
-                    
-                </div>
+                
             </div>
         </div>
     </div>

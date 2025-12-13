@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LoperLog - New Project</title>
+    <!-- Bootstrap stuff -->
+    <link
+        href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css"
+        rel="stylesheet"
+        integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB"
+        crossorigin="anonymous"
+    />
+</head>
+<body>
+    {% if message and message_type == 'danger' and not project_name %}
+        <div class="min-vh-100 d-flex align-items-center justify-content-center p-4">
+            <div class="alert alert-danger" role="alert" style="max-width: 600px;">
+                <h4 class="alert-heading">Error</h4>
+                <p class="mb-0">{{ message }}</p>
+                {% if message_detail %}
+                    <details class="mt-3">
+                        <summary style="cursor: pointer; user-select: none;"><small>For nerds</small></summary>
+                        <pre class="mt-2 mb-0" style="font-size: 0.85rem; white-space: pre-wrap; word-wrap: break-word;">{{ message_detail }}</pre>
+                    </details>
+                {% endif %}
+            </div>
+        </div>
+    {% else %}
+        {% include 'partials/sidebar.html' %}
+
+        <!-- Main Content Area -->
+        <div class="flex-grow-1 p-4 d-flex align-items-center justify-content-center vh-100">
+            <div class="container" style="max-width: 600px;">
+                <h1 class="mb-4 text-center">Create New Project</h1>
+                
+                {% if message %}
+                    <div class="alert alert-{{ message_type or 'danger' }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                {% endif %}
+                
+                <div class="card">
+                    <div class="card-body">
+                        <form method="POST" action="{{ url_for('new_project') }}">
+                            <div class="mb-3">
+                                <label for="project_name" class="form-label">Project Name <span class="text-danger">*</span></label>
+                                <input
+                                    type="text"
+                                    class="form-control"
+                                    id="project_name"
+                                    name="project_name"
+                                    placeholder="dropbear-engine"
+                                    required
+                                    value="{{ project_name or '' }}"
+                                />
+                                <div class="form-text">A descriptive name for your project.</div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="repository_url" class="form-label">Repository URL</label>
+                                <input
+                                    type="url"
+                                    class="form-control"
+                                    id="repository_url"
+                                    name="repository_url"
+                                    placeholder="https://github.com/tirbofish/dropbear"
+                                    value="{{ repository_url or '' }}"
+                                />
+                                <div class="form-text">Optional: Link to your project's repository.</div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="description" class="form-label">Description</label>
+                                <textarea
+                                    class="form-control"
+                                    id="description"
+                                    name="description"
+                                    rows="4"
+                                    placeholder="Describe what this project is about..."
+                                >{{ description or '' }}</textarea>
+                                <div class="form-text">Optional: Provide details about your project.</div>
+                            </div>
+                            
+                            <div class="d-flex gap-2">
+                                <button type="submit" class="btn btn-primary">Create Project</button>
+                                <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">Cancel</a>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Bootstrap stuff -->
+    <script
+        src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"
+        integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI"
+        crossorigin="anonymous"
+    ></script>
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>
