@@ -93,8 +93,21 @@ def __register_routes(app: Flask):
         
         if request.method == "POST":
             try:
+                from datetime import datetime
                 data = dict(request.form)
                 data['project_id'] = project_id
+                
+                datetime_fields = ['start_time', 'end_time', 'log_timestamp']
+                for field in datetime_fields:
+                    if field in data and data[field]:
+                        try:
+                            datetime.fromisoformat(data[field].replace('Z', '+00:00'))
+                        except (ValueError, AttributeError):
+                            return jsonify({
+                                "message": "Log failed to be added", 
+                                "cause": f"Field '{field}' must be in ISO 8601 format (YYYY-MM-DD HH:MM:SS)"
+                            }), 400
+                
                 log_id = dbHandler.add_log(data, user_id)
                 return jsonify({"message": "Log successfully added", "log_id": log_id}), 201
             except Exception as e:

@@ -412,7 +412,9 @@ def project_info(project_id):
             username=user_data.get("username"),
             email=user_data.get("email"),
             user_id=user_data.get("user_id"),
-            projects=projects
+            projects=projects,
+            logs=logs,
+            project_id=project_id
         )
     else:
         return ""
