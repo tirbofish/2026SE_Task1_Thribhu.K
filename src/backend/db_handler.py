@@ -314,68 +314,59 @@ def update_log(log_id, data, user_id):
     conn = sql.connect(DB_PATH)
     cur = conn.cursor()
 
-    try:
-        cur.execute(
-            "SELECT log_id FROM log_entries WHERE log_id = ? AND user_id = ?",
-            (log_id, user_id)
-        )
-        if not cur.fetchone():
-            return 0
+    cur.execute(
+        "SELECT log_id FROM log_entries WHERE log_id = ? AND user_id = ?",
+        (log_id, user_id)
+    )
+    if not cur.fetchone():
+        return 0
 
-        update_fields = []
-        params = []
+    update_fields = []
+    params = []
 
-        if 'start_time' in data:
-            update_fields.append("start_time = ?")
-            params.append(data['start_time'])
+    if 'start_time' in data:
+        update_fields.append("start_time = ?")
+        params.append(data['start_time'])
 
-        if 'end_time' in data:
-            update_fields.append("end_time = ?")
-            params.append(data['end_time'])
+    if 'end_time' in data:
+        update_fields.append("end_time = ?")
+        params.append(data['end_time'])
 
-        if 'time_worked_minutes' in data:
-            update_fields.append("time_worked_minutes = ?")
-            params.append(data['time_worked_minutes'])
+    if 'time_worked_minutes' in data:
+        update_fields.append("time_worked_minutes = ?")
+        params.append(data['time_worked_minutes'])
 
-        if 'developer_notes' in data:
-            update_fields.append("developer_notes = ?")
-            params.append(data['developer_notes'])
+    if 'developer_notes' in data:
+        update_fields.append("developer_notes = ?")
+        params.append(data['developer_notes'])
 
-        if 'project_id' in data:
-            update_fields.append("project_id = ?")
-            params.append(data['project_id'])
+    if 'project_id' in data:
+        update_fields.append("project_id = ?")
+        params.append(data['project_id'])
 
-        if 'related_commits' in data:
-            import json
-            related_commits = data['related_commits']
-            if isinstance(related_commits, list):
-                related_commits = json.dumps(related_commits)
-            elif isinstance(related_commits, str):
-                try:
-                    json.loads(related_commits)
-                except json.JSONDecodeError:
-                    related_commits = None
-            update_fields.append("related_commits = ?")
-            params.append(related_commits)
+    if 'related_commits' in data:
+        import json
+        related_commits = data['related_commits']
+        if isinstance(related_commits, list):
+            related_commits = json.dumps(related_commits)
+        elif isinstance(related_commits, str):
+            json.loads(related_commits)
+        update_fields.append("related_commits = ?")
+        params.append(related_commits)
 
-        if not update_fields:
-            return 0
+    if not update_fields:
+        return 0
 
-        params.append(log_id)
-        params.append(user_id)
+    params.append(log_id)
+    params.append(user_id)
 
-        query = f"UPDATE log_entries SET {', '.join(update_fields)} WHERE log_id = ? AND user_id = ?"
-        cur.execute(query, params)
+    query = f"UPDATE log_entries SET {', '.join(update_fields)} WHERE log_id = ? AND user_id = ?"
+    cur.execute(query, params)
 
-        row_count = cur.rowcount
-        conn.commit()
-        return row_count
-        
-    except Exception as e:
-        conn.rollback()
-        raise e
-    finally:
-        conn.close()
+    row_count = cur.rowcount
+    conn.commit()
+    conn.close()
+    return row_count
 
 
 def fetch_projects(user_id=None):

@@ -1,3 +1,4 @@
+from exceptions import UserSkillIssueException
 from flask import Flask
 from flask import jsonify, request
 from flask_jwt_extended import jwt_required, get_jwt_identity
@@ -94,6 +95,12 @@ def __register_routes(app: Flask):
         if request.method == "POST":
             try:
                 from datetime import datetime
+                
+                project = dbHandler.fetch_projects()
+                project_exists = any(p['project_id'] == project_id for p in project)
+                if not project_exists:
+                    raise UserSkillIssueException(f"Project with ID {project_id} does not exist")
+                
                 data = dict(request.form)
                 data['project_id'] = project_id
                 
@@ -103,16 +110,16 @@ def __register_routes(app: Flask):
                         try:
                             datetime.fromisoformat(data[field].replace('Z', '+00:00'))
                         except (ValueError, AttributeError):
-                            return jsonify({
-                                "message": "Log failed to be added", 
-                                "cause": f"Field '{field}' must be in ISO 8601 format (YYYY-MM-DD HH:MM:SS)"
-                            }), 400
+                            raise UserSkillIssueException(f"Field '{field}' must be in ISO 8601 format (YYYY-MM-DD HH:MM:SS)")
                 
                 log_id = dbHandler.add_log(data, user_id)
                 return jsonify({"message": "Log successfully added", "log_id": log_id}), 201
+            except UserSkillIssueException as e:
+                app.logger.error(f"User error occurred: {e}")
+                return jsonify({"message": "Log failed to be added", "cause": str(e)}), 400
             except Exception as e:
                 app.logger.error(f"Error occurred: {e}")
-                return jsonify({"message": "Log failed to be added", "cause": str(e)}), 400
+                return jsonify({"message": "Log failed to be added", "cause": str(e)}), 500
         else:
             try:
                 from filters import parse_log_filters
@@ -170,6 +177,12 @@ def __register_routes(app: Flask):
                 "message": "Log successfully updated",
                 "log_id": log_id
             }), 200
+        except UserSkillIssueException as e:
+            app.logger.error(f"Error occurred: {e}")
+            return jsonify({
+                "message": "Log failed to be updated",
+                "cause": str(e)
+            }), 400
         except Exception as e:
             app.logger.error(f"Error occurred: {e}")
             return jsonify({
