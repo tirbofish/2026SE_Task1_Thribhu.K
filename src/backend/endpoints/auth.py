@@ -17,16 +17,14 @@ def __register_routes(app: Flask):
         - email: str
         - username: str
         - password: str
-        - name: str
         """
         data = request.form
         email = data.get("email")
         password = data.get("password")
-        name = data.get("name")
         username = data.get("username")
 
-        if not email or not password or not name:
-            return jsonify({"message": "Name, email, username, and password are required"}), 400
+        if not email or not password or not username:
+            return jsonify({"message": "Email, username, and password are required"}), 400
 
         password_hash = bcrypt.hashpw(password.encode(), bcrypt.gensalt())
 
@@ -36,8 +34,8 @@ def __register_routes(app: Flask):
             cur = conn.cursor()
 
             cur.execute(
-                "INSERT INTO users (name, username, email, password_hash) VALUES (?, ?, ?, ?)",
-                (name, username, email, password_hash.decode())
+                "INSERT INTO users (username, email, password_hash) VALUES (?, ?, ?)",
+                (username, email, password_hash.decode())
             )
 
             user_id = cur.lastrowid
@@ -46,14 +44,14 @@ def __register_routes(app: Flask):
 
             access_token = create_access_token(
                 identity=str(user_id),
-                additional_claims={'email': email, 'name': name}
+                additional_claims={'email': email, 'username': username}
             )
 
             response = jsonify({
                 "message": "User registered successfully",
                 "user": {
-                    "id": user_id,
-                    "name": name,
+                    "user_id": user_id,
+                    "username": username,
                     "email": email
                 }
             })
@@ -95,7 +93,7 @@ def __register_routes(app: Flask):
             cur = conn.cursor()
 
             cur.execute(
-                "SELECT id, password_hash, name FROM users WHERE email = ?",
+                "SELECT user_id, username, password_hash FROM users WHERE email = ?",
                 (email,)
             )
             user = cur.fetchone()
@@ -110,15 +108,15 @@ def __register_routes(app: Flask):
             return jsonify({'message': 'Invalid email or password'}), 401
 
         token = create_access_token(
-            identity=str(user['id']),
-            additional_claims={'email': email, 'name': user['name']}
+            identity=str(user['user_id']),
+            additional_claims={'email': email, 'username': user['username']}
         )
 
         response = jsonify({
             'message': 'Login successful',
             'user': {
-                'id': user['id'],
-                'name': user['name'],
+                'user_id': user['user_id'],
+                'username': user['username'],
                 'email': email
             }
         })
@@ -150,15 +148,15 @@ def __register_routes(app: Flask):
             cur = conn.cursor()
 
             cur.execute(
-                "SELECT id, name, email FROM users WHERE id = ?", (user_id,))
+                "SELECT user_id, username, email FROM users WHERE user_id = ?", (user_id,))
             user = cur.fetchone()
 
             if not user:
                 return jsonify({"message": "User not found"}), 404
 
             return jsonify({
-                "id": user["id"],
-                "name": user["name"],
+                "user_id": user["user_id"],
+                "username": user["username"],
                 "email": user["email"]
             }), 200
 
@@ -177,22 +175,3 @@ def __register_routes(app: Flask):
         response = jsonify({"message": "Logout successful"})
         response.delete_cookie('access_token_cookie')
         return response, 200
-
-    @app.route("/dashboard", methods=["GET"])
-    @jwt_required()
-    def dashboard():
-        """Renders the dashboard page for authenticated users"""
-        from flask import render_template
-        
-        # Get user info from JWT
-        user_id = get_jwt_identity()
-        jwt_data = get_jwt()
-        
-        # You can pass user data to the template
-        user_info = {
-            'id': user_id,
-            'name': jwt_data.get('name', ''),
-            'email': jwt_data.get('email', '')
-        }
-        
-        return render_template('dashboard.html', user=user_info)

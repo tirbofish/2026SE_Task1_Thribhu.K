@@ -13,22 +13,7 @@
     />
 </head>
 <body>
-    <div class="container mt-5">
-        <h1>Welcome to Your Dashboard</h1>
-        {% if user %}
-        <div class="card mt-4">
-            <div class="card-body">
-                <h5 class="card-title">User Information</h5>
-                <p><strong>Name:</strong> {{ user.name }}</p>
-                <p><strong>Email:</strong> {{ user.email }}</p>
-                <p><strong>User ID:</strong> {{ user.id }}</p>
-            </div>
-        </div>
-        {% endif %}
-        <div class="mt-4">
-            <a class="btn btn-danger" onclick="logout()">Logout</a>
-        </div>
-    </div>
+    
 
     <!-- Bootstrap stuff -->
     <script
@@ -36,6 +21,8 @@
         integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI"
         crossorigin="anonymous"
     ></script>
+
+
     <script>
         async function logout() {
             let apiEndpoint = localStorage.getItem('apiEndpoint');
