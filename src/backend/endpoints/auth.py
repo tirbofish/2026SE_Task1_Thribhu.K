@@ -3,6 +3,10 @@ import sqlite3
 from flask import jsonify, request
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity, get_jwt
 import bcrypt
+import pyotp
+import qrcode
+import io
+import base64
 from shared import BLOCKLIST, DB_PATH
 
 
@@ -26,7 +30,39 @@ def __register_routes(app: Flask):
         if not email or not password or not username:
             return jsonify({"message": "Email, username, and password are required"}), 400
 
+        conn = None
+        try:
+            conn = sqlite3.connect(DB_PATH)
+            cur = conn.cursor()
+            
+            cur.execute("SELECT user_id FROM users WHERE email = ? OR username = ?", (email, username))
+            existing_user = cur.fetchone()
+            
+            if existing_user:
+                return jsonify({"message": "User with this email or username already exists"}), 400
+                
+        except Exception as e:
+            app.logger.error(f"Error checking existing user: {e}")
+            return jsonify({"message": "Database error", "cause": str(e)}), 500
+        finally:
+            if conn:
+                conn.close()
+
         password_hash = bcrypt.hashpw(password.encode(), bcrypt.gensalt())
+        
+        totp_secret = pyotp.random_base32()
+        totp = pyotp.TOTP(totp_secret)
+        provisioning_uri = totp.provisioning_uri(name=email, issuer_name='LoperLog')
+        
+        qr = qrcode.QRCode(version=1, box_size=10, border=5)
+        qr.add_data(provisioning_uri)
+        qr.make(fit=True)
+        img = qr.make_image(fill_color="black", back_color="white")
+        
+        img_buffer = io.BytesIO()
+        img.save(img_buffer, format='PNG')
+        img_buffer.seek(0)
+        qr_code_base64 = base64.b64encode(img_buffer.getvalue()).decode()
 
         conn = None
         try:
@@ -34,25 +70,72 @@ def __register_routes(app: Flask):
             cur = conn.cursor()
 
             cur.execute(
-                "INSERT INTO users (username, email, password_hash) VALUES (?, ?, ?)",
-                (username, email, password_hash.decode())
+                "INSERT INTO users (username, email, password_hash, totp_secret) VALUES (?, ?, ?, ?)",
+                (username, email, password_hash.decode(), totp_secret)
             )
 
             user_id = cur.lastrowid
 
             conn.commit()
 
+            return jsonify({
+                "message": "User created. 2FA verification is mandatory and requird.",
+                "user_id": user_id,
+                "totp_secret": totp_secret,
+                "provisioning_uri": provisioning_uri,
+                "qr_code": f"data:image/png;base64,{qr_code_base64}"
+            }), 201
+
+        except sqlite3.IntegrityError:
+            app.logger.error("Error: User already exists")
+            return jsonify({"message": "User already exists", "cause": "sqlite3 integrity err"}), 400
+        except Exception as e:
+            app.logger.error(f"Error while creating user: {e}")
+            return jsonify({"message": "Error while creating user", "cause": str(e)}), 400
+        finally:
+            if conn:
+                conn.close()
+
+    @app.route("/api/register/verify_2fa", methods=["POST"])
+    def verify_2fa_registration():
+        """Verify 2FA code during registration and complete registration"""
+        data = request.form
+        user_id = data.get("user_id")
+        totp_code = data.get("totp_code")
+
+        if not user_id or not totp_code:
+            return jsonify({"message": "user_id and totp_code are required"}), 400
+
+        conn = None
+        try:
+            conn = sqlite3.connect(DB_PATH)
+            conn.row_factory = sqlite3.Row
+            cur = conn.cursor()
+
+            cur.execute(
+                "SELECT user_id, username, email, totp_secret FROM users WHERE user_id = ?",
+                (user_id,)
+            )
+            user = cur.fetchone()
+
+            if not user:
+                return jsonify({"message": "User not found"}), 404
+
+            totp = pyotp.TOTP(user['totp_secret'])
+            if not totp.verify(totp_code, valid_window=1):
+                return jsonify({"message": "Invalid 2FA code. Please check your authenticator app and try again."}), 401
+
             access_token = create_access_token(
-                identity=str(user_id),
-                additional_claims={'email': email, 'username': username}
+                identity=str(user['user_id']),
+                additional_claims={'email': user['email'], 'username': user['username']}
             )
 
             response = jsonify({
-                "message": "User registered successfully",
+                "message": "2FA verified!",
                 "user": {
-                    "user_id": user_id,
-                    "username": username,
-                    "email": email
+                    "user_id": user['user_id'],
+                    "username": user['username'],
+                    "email": user['email']
                 }
             })
 
@@ -65,14 +148,11 @@ def __register_routes(app: Flask):
                 max_age=86400
             )
 
-            return response, 201
+            return response, 200
 
-        except sqlite3.IntegrityError:
-            app.logger.error("Error: User already exists")
-            return jsonify({"message": "User already exists"}), 400
         except Exception as e:
-            app.logger.error(f"Error while creating user: {e}")
-            return jsonify({"message": "Error while creating user", "cause": str(e)}), 400
+            app.logger.error(f"Error verifying 2FA: {e}")
+            return jsonify({"message": "Error verifying 2FA", "cause": str(e)}), 500
         finally:
             if conn:
                 conn.close()
@@ -93,7 +173,7 @@ def __register_routes(app: Flask):
             cur = conn.cursor()
 
             cur.execute(
-                "SELECT user_id, username, password_hash FROM users WHERE email = ?",
+                "SELECT user_id, username, password_hash, totp_secret FROM users WHERE email = ?",
                 (email,)
             )
             user = cur.fetchone()
@@ -107,30 +187,78 @@ def __register_routes(app: Flask):
         if not user or not bcrypt.checkpw(password.encode(), user['password_hash'].encode()):
             return jsonify({'message': 'Invalid email or password'}), 401
 
-        token = create_access_token(
-            identity=str(user['user_id']),
-            additional_claims={'email': email, 'username': user['username']}
-        )
+        return jsonify({
+            'message': 'Password correct, please enter 2FA code.',
+            'user_id': user['user_id'],
+            'requires_2fa': True
+        }), 200
 
-        response = jsonify({
-            'message': 'Login successful',
-            'user': {
-                'user_id': user['user_id'],
-                'username': user['username'],
-                'email': email
-            }
-        })
+    @app.route("/api/login/verify_2fa", methods=["POST"])
+    def verify_2fa_login():
+        """Verify 2FA code during login and issue token"""
+        data = request.form
+        user_id = data.get("user_id")
+        totp_code = data.get("totp_code")
 
-        response.set_cookie(
-            'access_token_cookie',
-            token,
-            httponly=True,
-            secure=False,
-            samesite='Lax',
-            max_age=86400
-        )
+        if not user_id or not totp_code:
+            return jsonify({"message": "user_id and totp_code are required"}), 400
 
-        return response, 200
+        conn = None
+        try:
+            conn = sqlite3.connect(DB_PATH)
+            conn.row_factory = sqlite3.Row
+            cur = conn.cursor()
+
+            cur.execute(
+                "SELECT user_id, username, email, totp_secret FROM users WHERE user_id = ?",
+                (user_id,)
+            )
+            user = cur.fetchone()
+
+            if not user:
+                return jsonify({"message": "User not found"}), 404
+
+            totp = pyotp.TOTP(user['totp_secret'])
+            if not totp.verify(totp_code, valid_window=1):
+                return jsonify({"message": "Invalid 2FA code"}), 401
+
+            cur.execute(
+                "UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE user_id = ?",
+                (user_id,)
+            )
+            conn.commit()
+
+            token = create_access_token(
+                identity=str(user['user_id']),
+                additional_claims={'email': user['email'], 'username': user['username']}
+            )
+
+            response = jsonify({
+                'message': 'Login successful',
+                'user': {
+                    'user_id': user['user_id'],
+                    'username': user['username'],
+                    'email': user['email']
+                }
+            })
+
+            response.set_cookie(
+                'access_token_cookie',
+                token,
+                httponly=True,
+                secure=False,
+                samesite='Lax',
+                max_age=86400
+            )
+
+            return response, 200
+
+        except Exception as e:
+            app.logger.error(f"Error verifying 2FA login: {e}")
+            return jsonify({"message": "Error verifying 2FA", "cause": str(e)}), 500
+        finally:
+            if conn:
+                conn.close()
 
     @app.route("/api/whoami", methods=["GET"])
     @jwt_required()
@@ -170,6 +298,8 @@ def __register_routes(app: Flask):
     @app.route("/api/logout", methods=["POST"])
     @jwt_required()
     def logout():
+        """Logs you out by setting the users JWT token onto a blocklist, forcing the 
+        user to re-login"""
         jti = get_jwt()["jti"]
         BLOCKLIST.add(jti)
         response = jsonify({"message": "Logout successful"})

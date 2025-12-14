@@ -48,8 +48,9 @@
             <div class="row g-2 mb-4">
                 <div class="col-6">
                     <button
-                        type="submit"
+                        type="button"
                         class="btn btn-primary w-100"
+                        onclick="handleLogin()"
                     >
                         Log In
                     </button>
@@ -83,11 +84,130 @@
         </form>
     </div>
 
+    <!-- 2FA Overlay -->
+    <div id="twoFAOverlay" class="modal" tabindex="-1" style="backdrop-filter: blur(5px);">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">2fa</h5>
+                    <button title="hide2fa" type="button" class="btn-close" onclick="hide2FAOverlay()"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="mb-3">Please enter your 6 digit 2fa code</p>
+                    <div class="mb-3">
+                        <input
+                            type="text"
+                            class="form-control"
+                            id="totp_code"
+                            name="totp_code"
+                            placeholder="123456"
+                            maxlength="6"
+                            pattern="[0-9]{6}"
+                            required
+                        />
+                    </div>
+                    <div id="verifyError" class="alert alert-danger d-none" role="alert"></div>
+                    <button type="button" class="btn btn-primary w-100" onclick="verifyLogin2FA()">Verify & Sign In</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Bootstrap stuff -->
     <script
         src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"
         integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI"
         crossorigin="anonymous"
     ></script>
+    <script>
+        let twoFAModal;
+        let currentUserId = null;
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            twoFAModal = new bootstrap.Modal(document.getElementById('twoFAOverlay'));
+        });
+
+        async function handleLogin() {
+            const form = document.getElementById('loginForm');
+            if (!form.checkValidity()) {
+                form.reportValidity();
+                return;
+            }
+
+            const formData = new FormData(form);
+            const apiEndpoint = formData.get('apiEndpoint');
+
+            try {
+                const response = await fetch(`${apiEndpoint}/api/login`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.requires_2fa) {
+                    // Store user_id for verification
+                    currentUserId = data.user_id;
+                    
+                    // Show 2FA overlay
+                    twoFAModal.show();
+                } else if (response.ok) {
+                    // Old flow without 2FA (shouldn't happen)
+                    localStorage.setItem('apiEndpoint', apiEndpoint);
+                    window.location.href = '/dashboard';
+                } else {
+                    alert(data.message || 'Login failed');
+                }
+            } catch (error) {
+                console.error('Login error:', error);
+                alert('Error connecting to API');
+            }
+        }
+
+        async function verifyLogin2FA() {
+            const totpCode = document.getElementById('totp_code').value;
+            const apiEndpoint = document.getElementById('apiEndpoint').value;
+            const verifyError = document.getElementById('verifyError');
+
+            if (!totpCode || totpCode.length !== 6) {
+                verifyError.textContent = 'Please enter a valid 6-digit code';
+                verifyError.classList.remove('d-none');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('user_id', currentUserId);
+            formData.append('totp_code', totpCode);
+
+            try {
+                const response = await fetch(`${apiEndpoint}/api/login/verify_2fa`, {
+                    method: 'POST',
+                    body: formData,
+                    credentials: 'include'
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    // Store API endpoint in localStorage
+                    localStorage.setItem('apiEndpoint', apiEndpoint);
+                    
+                    // Redirect to dashboard
+                    window.location.href = '/dashboard';
+                } else {
+                    verifyError.textContent = data.message || 'Verification failed';
+                    verifyError.classList.remove('d-none');
+                }
+            } catch (error) {
+                console.error('Verification error:', error);
+                verifyError.textContent = 'Error connecting to API';
+                verifyError.classList.remove('d-none');
+            }
+        }
+
+        function hide2FAOverlay() {
+            twoFAModal.hide();
+        }
+    </script>
 </body>
 </html>
