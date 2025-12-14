@@ -59,6 +59,32 @@ def __register_routes(app: Flask):
                 app.logger.error(f"Error creating project: {e}")
                 return jsonify({"message": "Failed to create project", "cause": str(e)}), 400
 
+    @app.route("/api/projects/<int:project_id>", methods=["DELETE"])
+    @jwt_required()
+    def delete_project(project_id):
+        """Delete a project and all its associated logs.
+        
+        Only the project creator can delete the project.
+        This will also delete all log entries associated with the project.
+        
+        Requires a JWT token
+        """
+        user_id = get_jwt_identity()
+        
+        try:
+            row_count = dbHandler.delete_project(project_id, user_id)
+            
+            if row_count == 0:
+                return jsonify({"message": "Project not found or you don't have permission to delete it"}), 404
+            
+            return jsonify({
+                "message": "Project successfully deleted",
+                "project_id": project_id
+            }), 200
+        except Exception as e:
+            app.logger.error(f"Error deleting project: {e}")
+            return jsonify({"message": "Failed to delete project", "cause": str(e)}), 500
+
     @app.route("/api/<int:project_id>/logs", methods=["GET", "POST"])
     @jwt_required()
     def logs(project_id):
@@ -122,6 +148,11 @@ def __register_routes(app: Flask):
                 return jsonify({"message": "Log failed to be added", "cause": str(e)}), 500
         else:
             try:
+                project = dbHandler.fetch_projects()
+                project_exists = any(p['project_id'] == project_id for p in project)
+                if not project_exists:
+                    return jsonify({"message": f"Project with ID {project_id} does not exist"}), 404
+                
                 from filters import parse_log_filters
                 filters = parse_log_filters()
                 logs = dbHandler.fetch_devlogs(user_id=user_id, project_id=project_id, filters=filters)
@@ -137,6 +168,11 @@ def __register_routes(app: Flask):
         user_id = get_jwt_identity()
 
         try:
+            project = dbHandler.fetch_projects()
+            project_exists = any(p['project_id'] == project_id for p in project)
+            if not project_exists:
+                return jsonify({"message": f"Project with ID {project_id} does not exist"}), 404
+            
             log = dbHandler.fetch_one_devlog(log_id, user_id)
             if log is None or log.get('project_id') != project_id:
                 return jsonify({"message": f"Log [{log_id}] not found in project [{project_id}]"}), 404
@@ -162,6 +198,11 @@ def __register_routes(app: Flask):
         user_id = get_jwt_identity()
 
         try:
+            project = dbHandler.fetch_projects()
+            project_exists = any(p['project_id'] == project_id for p in project)
+            if not project_exists:
+                return jsonify({"message": f"Project with ID {project_id} does not exist"}), 404
+            
             data = request.form
 
             existing_log = dbHandler.fetch_one_devlog(log_id, user_id)
@@ -200,6 +241,11 @@ def __register_routes(app: Flask):
         user_id = get_jwt_identity()
 
         try:
+            project = dbHandler.fetch_projects()
+            project_exists = any(p['project_id'] == project_id for p in project)
+            if not project_exists:
+                return jsonify({"message": f"Project with ID {project_id} does not exist"}), 404
+            
             existing_log = dbHandler.fetch_one_devlog(log_id, user_id)
             if not existing_log or existing_log.get('project_id') != project_id:
                 return jsonify({"message": "Log not found in this project"}), 404

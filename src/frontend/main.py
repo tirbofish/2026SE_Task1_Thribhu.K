@@ -1,6 +1,7 @@
 import os
 from flask import Flask, render_template, redirect, url_for, request, session, make_response
 import requests as req
+import json
 
 DEFAULT_API_ENDPOINT = "http://127.0.0.1:5000"
 API_TIMEOUT_SECONDS = 8
@@ -13,6 +14,18 @@ app = Flask(
 )
 
 app.secret_key = os.getenv("FRONTEND_SECRET_KEY", "dev-frontend-secret")
+
+
+# Add custom Jinja2 filter for JSON parsing
+@app.template_filter('from_json')
+def from_json_filter(value):
+    """Parse a JSON string into a Python object"""
+    if isinstance(value, str):
+        try:
+            return json.loads(value)
+        except (json.JSONDecodeError, ValueError):
+            return []
+    return value
 
 
 def _clean_endpoint(raw_endpoint: str | None) -> str:

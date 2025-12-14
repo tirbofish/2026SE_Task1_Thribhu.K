@@ -430,3 +430,40 @@ def create_project(project_name, user_id, repository_url=None, description=None)
         raise e
     finally:
         conn.close()
+
+
+def delete_project(project_id, user_id):
+    """Delete a project and all its associated logs. Only the project creator can delete it."""
+    conn = sql.connect(DB_PATH)
+    cur = conn.cursor()
+
+    try:
+        # Check if project exists and belongs to user
+        cur.execute(
+            "SELECT project_id FROM projects WHERE project_id = ? AND created_by = ?",
+            (project_id, user_id)
+        )
+        if not cur.fetchone():
+            return 0
+        
+        # Delete all log entries for this project
+        cur.execute(
+            "DELETE FROM log_entries WHERE project_id = ?",
+            (project_id,)
+        )
+        
+        # Delete the project
+        cur.execute(
+            "DELETE FROM projects WHERE project_id = ? AND created_by = ?",
+            (project_id, user_id)
+        )
+        
+        row_count = cur.rowcount
+        conn.commit()
+        return row_count
+        
+    except Exception as e:
+        conn.rollback()
+        raise e
+    finally:
+        conn.close()
