@@ -55,5 +55,10 @@
                 }
             });
         </script>
+        <script>
+            window.STATIC_ADDRESS = "{{ url_for('static', filename='') }}";
+        </script>
+        <script src="{{ url_for('static', filename='js/serviceWorker.js') }}"></script>
+        <script src="{{ url_for('static', filename='js/app.js') }}"></script>
     </body>
 </html>

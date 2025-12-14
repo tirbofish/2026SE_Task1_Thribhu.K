@@ -1,7 +1,8 @@
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", function () {
+    const serviceWorkerAddr = this.window.SERVICE_WORKER_ADDRESS;
     navigator.serviceWorker
-      .register("static/js/serviceWorker.js")
+      .register(serviceWorkerAddr)
       .then((res) => console.log("service worker registered"))
       .catch((err) => console.log("service worker not registered", err));
   });
