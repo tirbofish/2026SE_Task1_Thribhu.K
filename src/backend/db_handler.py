@@ -433,12 +433,11 @@ def create_project(project_name, user_id, repository_url=None, description=None)
 
 
 def delete_project(project_id, user_id):
-    """Delete a project and all its associated logs. Only the project creator can delete it."""
+    """Delete a project and all its associated logs"""
     conn = sql.connect(DB_PATH)
     cur = conn.cursor()
 
     try:
-        # Check if project exists and belongs to user
         cur.execute(
             "SELECT project_id FROM projects WHERE project_id = ? AND created_by = ?",
             (project_id, user_id)
@@ -446,13 +445,11 @@ def delete_project(project_id, user_id):
         if not cur.fetchone():
             return 0
         
-        # Delete all log entries for this project
         cur.execute(
             "DELETE FROM log_entries WHERE project_id = ?",
             (project_id,)
         )
         
-        # Delete the project
         cur.execute(
             "DELETE FROM projects WHERE project_id = ? AND created_by = ?",
             (project_id, user_id)
@@ -462,6 +459,53 @@ def delete_project(project_id, user_id):
         conn.commit()
         return row_count
         
+    except Exception as e:
+        conn.rollback()
+        raise e
+    finally:
+        conn.close()
+
+
+def update_project(project_id, user_id, project_name=None, repository_url=None, description=None):
+    """Update a project's editable fields"""
+    conn = sql.connect(DB_PATH)
+    cur = conn.cursor()
+
+    try:
+        cur.execute(
+            "SELECT project_id FROM projects WHERE project_id = ? AND created_by = ?",
+            (project_id, user_id)
+        )
+        if not cur.fetchone():
+            return 0
+
+        update_fields = []
+        params = []
+
+        if project_name is not None:
+            if str(project_name).strip() == "":
+                raise ValueError("project_name cannot be empty")
+            update_fields.append("project_name = ?")
+            params.append(str(project_name).strip())
+
+        if repository_url is not None:
+            update_fields.append("repository_url = ?")
+            params.append(str(repository_url))
+
+        if description is not None:
+            update_fields.append("description = ?")
+            params.append(str(description))
+
+        if not update_fields:
+            return 0
+
+        params.extend([project_id, user_id])
+        query = f"UPDATE projects SET {', '.join(update_fields)} WHERE project_id = ? AND created_by = ?"
+        cur.execute(query, params)
+
+        row_count = cur.rowcount
+        conn.commit()
+        return row_count
     except Exception as e:
         conn.rollback()
         raise e

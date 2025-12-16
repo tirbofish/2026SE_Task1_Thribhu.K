@@ -16,7 +16,6 @@ app = Flask(
 app.secret_key = os.getenv("FRONTEND_SECRET_KEY", "dev-frontend-secret")
 
 
-# Add custom Jinja2 filter for JSON parsing
 @app.template_filter('from_json')
 def from_json_filter(value):
     """Parse a JSON string into a Python object"""
@@ -45,7 +44,9 @@ def _build_error_message(api_response):
 
 @app.route("/")
 def index():
-    return render_template("index.html")
+    message = request.args.get("message")
+    message_type = request.args.get("message_type", "info")
+    return render_template("index.html", message=message, message_type=message_type)
 
 
 @app.route("/login", methods=["GET", "POST"])
@@ -358,9 +359,9 @@ def new_project():
         result = response.json()
         project_id = result.get("project_id")
         if project_id:
-            return redirect(url_for("project_detail", project_id=project_id))
-    except Exception:
-        pass
+            return redirect(url_for("project_info", project_id=project_id))
+    except Exception as e:
+        print(f"Exception as line 363 frontend/main.py: {e}")
     
     return redirect(url_for("dashboard"))
 
@@ -394,8 +395,43 @@ def project_info(project_id):
     
     logs = []
     try:
+        allowed_filter_keys = {
+            "start_time_gt",
+            "start_time_gte",
+            "start_time_lt",
+            "start_time_lte",
+            "end_time_gt",
+            "end_time_gte",
+            "end_time_lt",
+            "end_time_lte",
+            "time_worked_min",
+            "time_worked_max",
+            "log_timestamp_after",
+            "log_timestamp_before",
+            "username",
+            "notes_contains",
+        }
+
+        filters = {
+            key: (request.args.get(key) or "").strip()
+            for key in allowed_filter_keys
+            if request.args.get(key) is not None and (request.args.get(key) or "").strip() != ""
+        }
+
+        search = (request.args.get("search") or "").strip()
+        if search and "notes_contains" not in filters:
+            filters["notes_contains"] = search
+
+        after = filters.get("log_timestamp_after")
+        if after and len(after) == 10 and after.count("-") == 2:
+            filters["log_timestamp_after"] = f"{after} 00:00:00"
+        before = filters.get("log_timestamp_before")
+        if before and len(before) == 10 and before.count("-") == 2:
+            filters["log_timestamp_before"] = f"{before} 23:59:59"
+
         project_request = req.get(
             f"{api_endpoint}/api/{project_id}/logs",
+            params=filters,
             cookies={ACCESS_COOKIE_NAME: token},
             timeout=API_TIMEOUT_SECONDS
         )
@@ -431,6 +467,238 @@ def project_info(project_id):
         )
     else:
         return ""
+
+@app.route("/projects/<int:project_id>/settings", methods=["GET", "POST"])
+def project_settings(project_id):
+    # copy from here for auth checking
+    api_endpoint = session.get("api_endpoint", DEFAULT_API_ENDPOINT)
+    token = request.cookies.get(ACCESS_COOKIE_NAME)
+    
+    result = check_if_user_is_authenticated(api_endpoint, token)
+    if not isinstance(result, dict):
+        return result
+    
+    user_data = result
+    
+    projects = []
+    try:
+        projects_response = req.get(
+            f"{api_endpoint}/api/projects",
+            cookies={ACCESS_COOKIE_NAME: token},
+            timeout=API_TIMEOUT_SECONDS
+        )
+        if projects_response.status_code == 200:
+            projects = projects_response.json()
+    except req.RequestException:
+        pass
+
+    if not token:
+        return redirect(url_for("login"))
+    # end copy
+    
+    project = next((p for p in projects if p.get('project_id') == project_id), None)
+
+    if project is None:
+        return render_template(
+            "project_settings.html",
+            username=user_data.get("username"),
+            email=user_data.get("email"),
+            user_id=user_data.get("user_id"),
+            projects=projects,
+            project_id=project_id,
+            message="Project not found, likely doesn't exist",
+            message_type="danger",
+            keyword='big and dangerous'
+        )
+
+    if request.method == "POST":
+        action = (request.form.get("action") or "").strip().lower()
+
+        if action == "update":
+            project_name = (request.form.get("project_name") or "").strip()
+            repository_url = request.form.get("repository_url")
+            description = request.form.get("description")
+
+            if not project_name:
+                return render_template(
+                    "project_settings.html",
+                    username=user_data.get("username"),
+                    email=user_data.get("email"),
+                    user_id=user_data.get("user_id"),
+                    projects=projects,
+                    project_id=project_id,
+                    project=project,
+                    project_name=project.get("project_name"),
+                    message="Project name cannot be empty",
+                    message_type="danger",
+                )
+
+            try:
+                update_response = req.put(
+                    f"{api_endpoint}/api/projects/{project_id}",
+                    data={
+                        "project_name": project_name,
+                        "repository_url": repository_url if repository_url is not None else "",
+                        "description": description if description is not None else "",
+                    },
+                    cookies={ACCESS_COOKIE_NAME: token},
+                    timeout=API_TIMEOUT_SECONDS
+                )
+            except req.RequestException as exc:
+                return render_template(
+                    "project_settings.html",
+                    username=user_data.get("username"),
+                    email=user_data.get("email"),
+                    user_id=user_data.get("user_id"),
+                    projects=projects,
+                    project_id=project_id,
+                    project=project,
+                    project_name=project.get("project_name"),
+                    message="Unable to reach API",
+                    message_detail=str(exc),
+                    message_type="danger",
+                )
+
+            if update_response.status_code != 200:
+                return render_template(
+                    "project_settings.html",
+                    username=user_data.get("username"),
+                    email=user_data.get("email"),
+                    user_id=user_data.get("user_id"),
+                    projects=projects,
+                    project_id=project_id,
+                    project=project,
+                    project_name=project.get("project_name"),
+                    message=_build_error_message(update_response),
+                    message_type="danger",
+                )
+
+            try:
+                projects_response = req.get(
+                    f"{api_endpoint}/api/projects",
+                    cookies={ACCESS_COOKIE_NAME: token},
+                    timeout=API_TIMEOUT_SECONDS
+                )
+                if projects_response.status_code == 200:
+                    projects = projects_response.json()
+            except req.RequestException:
+                pass
+
+            project = next((p for p in projects if p.get('project_id') == project_id), project)
+            return render_template(
+                "project_settings.html",
+                username=user_data.get("username"),
+                email=user_data.get("email"),
+                user_id=user_data.get("user_id"),
+                projects=projects,
+                project_id=project_id,
+                project=project,
+                project_name=project.get("project_name") or project_name,
+                message="Project updated",
+                message_type="success",
+            )
+
+        if action == "delete":
+            try:
+                delete_response = req.delete(
+                    f"{api_endpoint}/api/projects/{project_id}",
+                    cookies={ACCESS_COOKIE_NAME: token},
+                    timeout=API_TIMEOUT_SECONDS
+                )
+            except req.RequestException as exc:
+                return render_template(
+                    "project_settings.html",
+                    username=user_data.get("username"),
+                    email=user_data.get("email"),
+                    user_id=user_data.get("user_id"),
+                    projects=projects,
+                    project_id=project_id,
+                    project=project,
+                    project_name=project.get("project_name"),
+                    message="Unable to reach API",
+                    message_detail=str(exc),
+                    message_type="danger",
+                )
+
+            if delete_response.status_code != 200:
+                return render_template(
+                    "project_settings.html",
+                    username=user_data.get("username"),
+                    email=user_data.get("email"),
+                    user_id=user_data.get("user_id"),
+                    projects=projects,
+                    project_id=project_id,
+                    project=project,
+                    project_name=project.get("project_name"),
+                    message=_build_error_message(delete_response),
+                    message_type="danger",
+                )
+
+            return redirect(url_for("dashboard"))
+
+        return render_template(
+            "project_settings.html",
+            username=user_data.get("username"),
+            email=user_data.get("email"),
+            user_id=user_data.get("user_id"),
+            projects=projects,
+            project_id=project_id,
+            project=project,
+            project_name=project.get("project_name"),
+            message="Unknown action",
+            message_type="danger",
+        )
+    
+    return render_template(
+        "project_settings.html",
+        username=user_data.get("username"),
+        email=user_data.get("email"),
+        user_id=user_data.get("user_id"),
+        projects=projects,
+        project_id=project_id,
+        project=project,
+        project_name=project.get('project_name'),
+    )
+
+@app.route("/settings", methods=["GET", "POST"])
+def user_settings():
+    # copy from here for auth checking
+    api_endpoint = session.get("api_endpoint", DEFAULT_API_ENDPOINT)
+    token = request.cookies.get(ACCESS_COOKIE_NAME)
+    
+    result = check_if_user_is_authenticated(api_endpoint, token)
+    if not isinstance(result, dict):
+        return result
+    
+    user_data = result
+    
+    projects = []
+    try:
+        projects_response = req.get(
+            f"{api_endpoint}/api/projects",
+            cookies={ACCESS_COOKIE_NAME: token},
+            timeout=API_TIMEOUT_SECONDS
+        )
+        if projects_response.status_code == 200:
+            projects = projects_response.json()
+    except req.RequestException:
+        pass
+
+    if not token:
+        return redirect(url_for("login"))
+    # end copy
+    
+    return render_template(
+        "user_settings.html",
+        username=user_data.get("username"),
+        email=user_data.get("email"),
+        user_id=user_data.get("user_id"),
+        projects=projects,
+    )
+
+@app.errorhandler(404)
+def page_not_found(e):
+    return redirect(url_for("index") + "?message=Page not found&message_type=danger")
 
 if __name__ == '__main__':
     app.run(debug=True, host="0.0.0.0", port=4200)

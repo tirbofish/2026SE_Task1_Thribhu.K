@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    {% if message %}
+    <title>LoperLog - Error</title>
+    {% else %}
+    <title>{% for project in projects %}{% if project.project_id == project_id %}{{ project.project_name }}{% endif %}{% endfor %} - Settings</title>
+    {% endif %}
+    <!-- Bootstrap stuff -->
+    <link
+        href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css"
+        rel="stylesheet"
+        integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB"
+        crossorigin="anonymous"
+    />
+</head>
+<body>
+    {% if message and message_type == 'danger' and keyword == 'big and dangerous' %}
+        <div class="min-vh-100 d-flex align-items-center justify-content-center p-4">
+            <div class="alert alert-danger" role="alert" style="max-width: 600px;">
+                <h4 class="alert-heading">Error</h4>
+                <p class="mb-0">{{ message }}</p>
+                {% if message_detail %}
+                    <details class="mt-3">
+                        <summary style="cursor: pointer; user-select: none;"><small>For nerds</small></summary>
+                        <pre class="mt-2 mb-0" style="font-size: 0.85rem; white-space: pre-wrap; word-wrap: break-word;">{{ message_detail }}</pre>
+                    </details>
+                {% endif %}
+                <div class="mt-3 text-center">
+                    <a href="/" class="btn btn-primary">Return to Home</a>
+                </div>
+            </div>
+        </div>
+    {% else %}
+        {% include 'partials/sidebar.html' %}
+
+        <div class="flex-grow-1 p-4">
+            <div class="container-fluid">
+                <h1 class="mb-4">{{ project_name }} Settings</h1>
+                
+                {% if message %}
+                    <div class="alert alert-{{ message_type or 'info' }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                {% endif %}
+                
+                <!-- ====================================== -->
+
+                <div class="row g-3">
+                    <div class="col-12 col-lg-8">
+                        <div class="card">
+                            <div class="card-header">
+                                Edit project
+                            </div>
+                            <div class="card-body">
+                                <form method="POST" action="/projects/{{ project_id }}/settings">
+                                    <input type="hidden" name="action" value="update" />
+
+                                    <div class="mb-3">
+                                        <label for="project_name" class="form-label">Project name</label>
+                                        <input
+                                            type="text"
+                                            class="form-control"
+                                            id="project_name"
+                                            name="project_name"
+                                            value="{{ project.project_name if project else project_name }}"
+                                            required
+                                        />
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label for="repository_url" class="form-label">Repository URL</label>
+                                        <input
+                                            type="url"
+                                            class="form-control"
+                                            id="repository_url"
+                                            name="repository_url"
+                                            value="{{ project.repository_url if project and project.repository_url else '' }}"
+                                            placeholder="https://github.com/user/repo"
+                                        />
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label for="description" class="form-label">Description</label>
+                                        <textarea
+                                            class="form-control"
+                                            id="description"
+                                            name="description"
+                                            rows="4"
+                                            placeholder="What is this project about?"
+                                        >{{ project.description if project and project.description else '' }}</textarea>
+                                    </div>
+
+                                    <button type="submit" class="btn btn-primary">Save changes</button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-12 col-lg-4">
+                        <div class="card border-danger">
+                            <div class="card-header text-bg-danger">
+                                Danger zone
+                            </div>
+                            <div class="card-body">
+                                <p class="text-muted mb-3">Deleting a project removes all its logs.</p>
+                                <button type="button" class="btn btn-outline-danger w-100" data-bs-toggle="modal" data-bs-target="#confirmDeleteProjectModal">
+                                    Delete project
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ====================================== -->
+            </div>
+        </div>
+    {% endif %}
+
+    <div class="modal fade" id="confirmDeleteProjectModal" tabindex="-1" aria-labelledby="confirmDeleteProjectModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="confirmDeleteProjectModalLabel">Confirm delete</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="mb-0">Delete <strong>{{ project.project_name if project else project_name }}</strong>? This cannot be undone.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <form method="POST" action="/projects/{{ project_id }}/settings" class="m-0">
+                        <input type="hidden" name="action" value="delete" />
+                        <button type="submit" class="btn btn-danger">Yes, delete</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap stuff -->
+    <script
+        src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"
+        integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI"
+        crossorigin="anonymous"
+    ></script>
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>

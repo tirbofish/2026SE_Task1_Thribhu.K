@@ -17,6 +17,12 @@
         <div class="min-vh-100 d-flex align-items-center justify-content-center">
             <div class="text-center">
                 <h1 class="display-4 mb-4">LoperLog</h1>
+                {% if message %}
+                    <div class="alert alert-{{ message_type or 'info' }} alert-dismissible fade show" role="alert" style="max-width: 500px; margin: 0 auto 1rem;">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                {% endif %}
                 <div class="spinner-border" role="status">
                     <span class="visually-hidden">Loading...</span>
                 </div>

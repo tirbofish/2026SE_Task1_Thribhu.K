@@ -59,10 +59,13 @@ def __register_routes(app: Flask):
                 app.logger.error(f"Error creating project: {e}")
                 return jsonify({"message": "Failed to create project", "cause": str(e)}), 400
 
-    @app.route("/api/projects/<int:project_id>", methods=["DELETE"])
+    @app.route("/api/projects/<int:project_id>", methods=["DELETE", "PUT"])
     @jwt_required()
     def delete_project(project_id):
-        """Delete a project and all its associated logs.
+        """Delete or update a project.
+
+        DELETE: Delete a project and all its associated logs.
+        PUT: Update project_name, repository_url, and/or description.
         
         Only the project creator can delete the project.
         This will also delete all log entries associated with the project.
@@ -72,18 +75,48 @@ def __register_routes(app: Flask):
         user_id = get_jwt_identity()
         
         try:
-            row_count = dbHandler.delete_project(project_id, user_id)
-            
+            if request.method == "DELETE":
+                row_count = dbHandler.delete_project(project_id, user_id)
+                
+                if row_count == 0:
+                    return jsonify({"message": "Project not found or you don't have permission to delete it"}), 404
+                
+                return jsonify({
+                    "message": "Project successfully deleted",
+                    "project_id": project_id
+                }), 200
+
+            data = request.form
+            project_name = data.get("project_name")
+            repository_url = data.get("repository_url")
+            description = data.get("description")
+
+            if project_name is None and repository_url is None and description is None:
+                return jsonify({"message": "No update fields provided"}), 400
+
+            if project_name is not None and str(project_name).strip() == "":
+                return jsonify({"message": "project_name cannot be empty"}), 400
+
+            row_count = dbHandler.update_project(
+                project_id=project_id,
+                user_id=user_id,
+                project_name=project_name,
+                repository_url=repository_url,
+                description=description
+            )
+
             if row_count == 0:
-                return jsonify({"message": "Project not found or you don't have permission to delete it"}), 404
-            
+                return jsonify({"message": "Project not found or you don't have permission to update it"}), 404
+
             return jsonify({
-                "message": "Project successfully deleted",
+                "message": "Project successfully updated",
                 "project_id": project_id
             }), 200
+        except ValueError as e:
+            return jsonify({"message": "Failed to update project", "cause": str(e)}), 400
         except Exception as e:
-            app.logger.error(f"Error deleting project: {e}")
-            return jsonify({"message": "Failed to delete project", "cause": str(e)}), 500
+            app.logger.error(f"Error updating/deleting project: {e}")
+            return jsonify({"message": "Failed to update project", "cause": str(e)}), 500
 
     @app.route("/api/<int:project_id>/logs", methods=["GET", "POST"])
     @jwt_required()
