@@ -46,10 +46,63 @@
                 
                 <!-- ====================================== -->
 
-                <!-- Add your user settings content here -->
                 <div class="row">
                     <div class="col-12">
-                        <p class="text-muted">User: {{ username }} ({{ email }})</p>
+                        <p class="text-muted">Signed in as {{ username }} ({{ email }})</p>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-12 col-lg-6">
+                        <div class="card mb-3">
+                            <div class="card-header">Edit username</div>
+                            <div class="card-body">
+                                <form method="POST" action="/settings">
+                                    <input type="hidden" name="action" value="update_username" />
+                                    <div class="mb-3">
+                                        <label for="username" class="form-label">New username</label>
+                                        <input type="text" class="form-control" id="username" name="username" value="{{ username }}" required />
+                                    </div>
+                                    <button type="submit" class="btn btn-primary">Save username</button>
+                                </form>
+                            </div>
+                        </div>
+
+                        <div class="card mb-3">
+                            <div class="card-header">Edit password</div>
+                            <div class="card-body">
+                                <form method="POST" action="/settings">
+                                    <input type="hidden" name="action" value="update_password" />
+                                    <div class="mb-3">
+                                        <label for="current_password" class="form-label">Current password</label>
+                                        <input type="password" class="form-control" id="current_password" name="current_password" required />
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="new_password" class="form-label">New password</label>
+                                        <input type="password" class="form-control" id="new_password" name="new_password" required />
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="confirm_new_password" class="form-label">Confirm new password</label>
+                                        <input type="password" class="form-control" id="confirm_new_password" name="confirm_new_password" required />
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="totp_code" class="form-label">2FA code</label>
+                                        <input type="text" class="form-control" id="totp_code" name="totp_code" inputmode="numeric" autocomplete="one-time-code" placeholder="123456" required />
+                                        <div class="form-text">Enter the code from your authenticator app.</div>
+                                    </div>
+                                    <button type="submit" class="btn btn-primary">Update password</button>
+                                </form>
+                            </div>
+                        </div>
+
+                        <div class="card border-danger mb-3">
+                            <div class="card-header text-bg-danger">Delete user</div>
+                            <div class="card-body">
+                                <button type="button" class="btn btn-outline-danger w-100" data-bs-toggle="modal" data-bs-target="#confirmDeleteUserModalStep1">
+                                    Delete account
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -58,6 +111,260 @@
         </div>
     {% endif %}
 
+    <div class="modal fade" id="confirmDeleteUserModalStep1" tabindex="-1" aria-labelledby="confirmDeleteUserModalStep1Label" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="confirmDeleteUserModalStep1Label">Delete account</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="mb-0"><strong>Warning 1:</strong> This will delete your user account.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button
+                        type="button"
+                        class="btn btn-danger"
+                        data-bs-dismiss="modal"
+                        data-bs-toggle="modal"
+                        data-bs-target="#confirmDeleteUserModalStep2"
+                    >Continue</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="confirmDeleteUserModalStep2" tabindex="-1" aria-labelledby="confirmDeleteUserModalStep2Label" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="confirmDeleteUserModalStep2Label">Delete account</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="mb-0"><strong>Warning 2:</strong> Your projects and logs will be removed.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button
+                        type="button"
+                        class="btn btn-danger"
+                        data-bs-dismiss="modal"
+                        data-bs-toggle="modal"
+                        data-bs-target="#confirmDeleteUserModalStep3"
+                    >Continue</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="confirmDeleteUserModalStep3" tabindex="-1" aria-labelledby="confirmDeleteUserModalStep3Label" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="confirmDeleteUserModalStep3Label">Delete account</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="mb-0"><strong>Warning 3:</strong> Are you really really really sure about this???</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button
+                        type="button"
+                        class="btn btn-danger"
+                        data-bs-dismiss="modal"
+                        data-bs-toggle="modal"
+                        data-bs-target="#confirmDeleteUserModalStep4"
+                    >Continue</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="confirmDeleteUserModalStep4" tabindex="-1" aria-labelledby="confirmDeleteUserModalStep4Label" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="confirmDeleteUserModalStep4Label">Delete account</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="mb-0"><strong>Warning 4: </strong>You're going to make me sad ☹️</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button
+                        type="button"
+                        class="btn btn-danger"
+                        data-bs-dismiss="modal"
+                        data-bs-toggle="modal"
+                        data-bs-target="#confirmDeleteUserModalStep5"
+                    >Continue</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="confirmDeleteUserModalStep5" tabindex="-1" aria-labelledby="confirmDeleteUserModalStep5Label" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="confirmDeleteUserModalStep5Label">Delete account</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="mb-0"><strong>Warning 5: </strong>If you delete this account, a kitten will be killed </p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button
+                        type="button"
+                        class="btn btn-danger"
+                        data-bs-dismiss="modal"
+                        data-bs-toggle="modal"
+                        data-bs-target="#confirmDeleteUserModalStep6"
+                    >Continue</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="confirmDeleteUserModalStep6" tabindex="-1" aria-labelledby="confirmDeleteUserModalStep6Label" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="confirmDeleteUserModalStep6Label">Delete account</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="mb-0"><strong>Warning 6:</strong> Okay fine that was just a fib but it won't be good</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button
+                        type="button"
+                        class="btn btn-danger"
+                        data-bs-dismiss="modal"
+                        data-bs-toggle="modal"
+                        data-bs-target="#confirmDeleteUserModalStep7"
+                    >Continue</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        .bouncy-modal-dialog {
+            position: fixed;
+            left: 50%;
+            top: 50%;
+            margin: 0;
+            transform: translate(-50%, -50%);
+            animation: bounce-around 2.6s infinite alternate ease-in-out;
+            will-change: transform;
+        }
+
+        .evade-footer {
+            position: relative;
+            overflow: hidden;
+        }
+
+        .evade-btn {
+            will-change: transform;
+        }
+
+        @keyframes bounce-around {
+            0%   { transform: translate(calc(-50% - 22vw), calc(-50% - 18vh)); }
+            15%  { transform: translate(calc(-50% + 18vw), calc(-50% - 20vh)); }
+            35%  { transform: translate(calc(-50% + 26vw), calc(-50% + 10vh)); }
+            55%  { transform: translate(calc(-50% - 10vw), calc(-50% + 22vh)); }
+            75%  { transform: translate(calc(-50% - 28vw), calc(-50% + 6vh)); }
+            100% { transform: translate(calc(-50% + 8vw),  calc(-50% - 6vh)); }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .bouncy-modal-dialog {
+            animation: none !important;
+            }
+        }
+    </style>
+
+    <div class="modal fade" id="confirmDeleteUserModalStep7" tabindex="-1" aria-labelledby="confirmDeleteUserModalStep7Label" aria-hidden="true">
+        <div class="modal-dialog bouncy-modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="confirmDeleteUserModalStep7Label">Delete account</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+
+                <div class="modal-body">
+                    <p class="mb-0"><strong>Warning 8:</strong> Lets see you delete your account now haha</p>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button
+                    type="button"
+                    class="btn btn-danger"
+                    data-bs-dismiss="modal"
+                    data-bs-toggle="modal"
+                    data-bs-target="#confirmDeleteUserModalStep8"
+                    >Continue</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="confirmDeleteUserModalStep8" tabindex="-1" aria-labelledby="confirmDeleteUserModalStep8Label" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="confirmDeleteUserModalStep8Label">Delete account</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="mb-0"><strong>Warning 8:</strong> You caught me. Fine, ill let you delete...</p>
+                    <p class="text-muted small mt-2 mb-0" id="warning8Hint">Hint: Tab beats the mouse.</p>
+                </div>
+                <div class="modal-footer evade-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button
+                        type="button"
+                        class="btn btn-danger evade-btn"
+                        data-evade="true"
+                        data-bs-dismiss="modal"
+                        data-bs-toggle="modal"
+                        data-bs-target="#confirmDeleteUserModalFinal"
+                    >Continue</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="confirmDeleteUserModalFinal" tabindex="-1" aria-labelledby="confirmDeleteUserModalFinalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="confirmDeleteUserModalFinalLabel">Delete account</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="mb-0"><strong>Final warning:</strong> This action cannot be undone.</p>
+                    <p class="text-muted small mt-2 mb-0" id="deleteKeyboardHint">Hint: Use Tab to focus “Yes, delete”, then press Enter.</p>
+                </div>
+                <div class="modal-footer evade-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <form method="POST" action="/settings" class="m-0">
+                        <input type="hidden" name="action" value="delete_user" />
+                        <button type="submit" class="btn btn-danger evade-btn" data-evade="true" aria-describedby="deleteKeyboardHint">Yes, delete</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Bootstrap stuff -->
     <script
         src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"
@@ -65,5 +372,109 @@
         crossorigin="anonymous"
     ></script>
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+
+    <script>
+        (function () {
+            const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+            if (reduceMotion) return;
+
+            let lastInputWasKeyboard = false;
+            window.addEventListener('keydown', (e) => {
+                if (e.key === 'Tab' || e.key.startsWith('Arrow')) {
+                    lastInputWasKeyboard = true;
+                }
+            });
+            window.addEventListener('pointerdown', () => {
+                lastInputWasKeyboard = false;
+            }, { passive: true });
+
+            function clamp(value, min, max) {
+                return Math.min(max, Math.max(min, value));
+            }
+
+            function setBaseMetrics(button, footer) {
+                const footerRect = footer.getBoundingClientRect();
+                const buttonRect = button.getBoundingClientRect();
+                button.dataset.baseLeft = String(buttonRect.left - footerRect.left);
+                button.dataset.baseTop = String(buttonRect.top - footerRect.top);
+                button.dataset.btnWidth = String(buttonRect.width);
+                button.dataset.btnHeight = String(buttonRect.height);
+                button.dataset.tx = '0';
+                button.dataset.ty = '0';
+                button.style.transform = 'translate(0px, 0px)';
+            }
+
+            function evadeIfClose(button, footer, pointerX, pointerY) {
+                if (lastInputWasKeyboard) return;
+                if (document.activeElement === button) return;
+
+                const rect = button.getBoundingClientRect();
+                const cx = rect.left + rect.width / 2;
+                const cy = rect.top + rect.height / 2;
+
+                const dx = cx - pointerX;
+                const dy = cy - pointerY;
+                const dist = Math.hypot(dx, dy);
+
+                const threshold = 90;
+                if (dist > threshold) return;
+
+                const footerRect = footer.getBoundingClientRect();
+                const baseLeft = Number(button.dataset.baseLeft || 0);
+                const baseTop = Number(button.dataset.baseTop || 0);
+                const btnWidth = Number(button.dataset.btnWidth || rect.width);
+                const btnHeight = Number(button.dataset.btnHeight || rect.height);
+
+                const minTx = -baseLeft;
+                const maxTx = footerRect.width - btnWidth - baseLeft;
+                const minTy = -baseTop;
+                const maxTy = footerRect.height - btnHeight - baseTop;
+
+                const currentTx = Number(button.dataset.tx || 0);
+                const currentTy = Number(button.dataset.ty || 0);
+
+                const nx = dx / (dist || 1);
+                const ny = dy / (dist || 1);
+                const step = 80;
+
+                const nextTx = clamp(currentTx + nx * step, minTx, maxTx);
+                const nextTy = clamp(currentTy + ny * step, minTy, maxTy);
+
+                button.dataset.tx = String(nextTx);
+                button.dataset.ty = String(nextTy);
+                button.style.transform = `translate(${nextTx}px, ${nextTy}px)`;
+            }
+
+            const evadeButtons = document.querySelectorAll('[data-evade="true"]');
+            evadeButtons.forEach((button) => {
+                const footer = button.closest('.evade-footer');
+                const modal = button.closest('.modal');
+                if (!footer || !modal) return;
+
+                const setup = () => {
+                    // Allow Bootstrap to finish measuring/laying out the modal
+                    window.requestAnimationFrame(() => setBaseMetrics(button, footer));
+                };
+
+                modal.addEventListener('shown.bs.modal', setup);
+                modal.addEventListener('hidden.bs.modal', () => {
+                    button.style.transform = 'translate(0px, 0px)';
+                    button.dataset.tx = '0';
+                    button.dataset.ty = '0';
+                });
+
+                button.addEventListener('focus', () => {
+                    // If you reached it via Tab, don't play games.
+                    button.style.transform = 'translate(0px, 0px)';
+                    button.dataset.tx = '0';
+                    button.dataset.ty = '0';
+                });
+
+                footer.addEventListener('pointermove', (e) => {
+                    evadeIfClose(button, footer, e.clientX, e.clientY);
+                }, { passive: true });
+            });
+        })();
+    </script>
 </body>
 </html>

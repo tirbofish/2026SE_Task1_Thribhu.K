@@ -688,6 +688,182 @@ def user_settings():
         return redirect(url_for("login"))
     # end copy
     
+    if request.method == "POST":
+        action = (request.form.get("action") or "").strip().lower()
+
+        if action == "update_username":
+            new_username = (request.form.get("username") or "").strip()
+            if not new_username:
+                return render_template(
+                    "user_settings.html",
+                    username=user_data.get("username"),
+                    email=user_data.get("email"),
+                    user_id=user_data.get("user_id"),
+                    projects=projects,
+                    message="Username cannot be empty",
+                    message_type="danger",
+                )
+
+            try:
+                resp = req.put(
+                    f"{api_endpoint}/api/account/username",
+                    data={"username": new_username},
+                    cookies={ACCESS_COOKIE_NAME: token},
+                    timeout=API_TIMEOUT_SECONDS
+                )
+            except req.RequestException as exc:
+                return render_template(
+                    "user_settings.html",
+                    username=user_data.get("username"),
+                    email=user_data.get("email"),
+                    user_id=user_data.get("user_id"),
+                    projects=projects,
+                    message="Unable to reach API",
+                    message_detail=str(exc),
+                    message_type="danger",
+                )
+
+            if resp.status_code != 200:
+                return render_template(
+                    "user_settings.html",
+                    username=user_data.get("username"),
+                    email=user_data.get("email"),
+                    user_id=user_data.get("user_id"),
+                    projects=projects,
+                    message=_build_error_message(resp),
+                    message_type="danger",
+                )
+
+            user_data["username"] = new_username
+            return render_template(
+                "user_settings.html",
+                username=new_username,
+                email=user_data.get("email"),
+                user_id=user_data.get("user_id"),
+                projects=projects,
+                message="Username updated",
+                message_type="success",
+            )
+
+        if action == "update_password":
+            current_password = request.form.get("current_password") or ""
+            new_password = request.form.get("new_password") or ""
+            confirm_password = request.form.get("confirm_new_password") or ""
+            totp_code = (request.form.get("totp_code") or "").strip()
+
+            if not current_password or not new_password or not confirm_password or not totp_code:
+                return render_template(
+                    "user_settings.html",
+                    username=user_data.get("username"),
+                    email=user_data.get("email"),
+                    user_id=user_data.get("user_id"),
+                    projects=projects,
+                    message="All password fields and 2FA code are required",
+                    message_type="danger",
+                )
+
+            if new_password != confirm_password:
+                return render_template(
+                    "user_settings.html",
+                    username=user_data.get("username"),
+                    email=user_data.get("email"),
+                    user_id=user_data.get("user_id"),
+                    projects=projects,
+                    message="New passwords do not match",
+                    message_type="danger",
+                )
+
+            try:
+                resp = req.put(
+                    f"{api_endpoint}/api/account/password",
+                    data={
+                        "current_password": current_password,
+                        "new_password": new_password,
+                        "totp_code": totp_code,
+                    },
+                    cookies={ACCESS_COOKIE_NAME: token},
+                    timeout=API_TIMEOUT_SECONDS
+                )
+            except req.RequestException as exc:
+                return render_template(
+                    "user_settings.html",
+                    username=user_data.get("username"),
+                    email=user_data.get("email"),
+                    user_id=user_data.get("user_id"),
+                    projects=projects,
+                    message="Unable to reach API",
+                    message_detail=str(exc),
+                    message_type="danger",
+                )
+
+            if resp.status_code != 200:
+                return render_template(
+                    "user_settings.html",
+                    username=user_data.get("username"),
+                    email=user_data.get("email"),
+                    user_id=user_data.get("user_id"),
+                    projects=projects,
+                    message=_build_error_message(resp),
+                    message_type="danger",
+                )
+
+            return render_template(
+                "user_settings.html",
+                username=user_data.get("username"),
+                email=user_data.get("email"),
+                user_id=user_data.get("user_id"),
+                projects=projects,
+                message="Password updated",
+                message_type="success",
+            )
+
+        if action == "delete_user":
+            try:
+                resp = req.delete(
+                    f"{api_endpoint}/api/account",
+                    cookies={ACCESS_COOKIE_NAME: token},
+                    timeout=API_TIMEOUT_SECONDS
+                )
+            except req.RequestException as exc:
+                return render_template(
+                    "user_settings.html",
+                    username=user_data.get("username"),
+                    email=user_data.get("email"),
+                    user_id=user_data.get("user_id"),
+                    projects=projects,
+                    message="Unable to reach API",
+                    message_detail=str(exc),
+                    message_type="danger",
+                )
+
+            if resp.status_code != 200:
+                return render_template(
+                    "user_settings.html",
+                    username=user_data.get("username"),
+                    email=user_data.get("email"),
+                    user_id=user_data.get("user_id"),
+                    projects=projects,
+                    message=_build_error_message(resp),
+                    message_type="danger",
+                )
+
+            session.pop("api_endpoint", None)
+            redirect_response = make_response(
+                redirect(url_for("login") + "?message=Account deleted&message_type=success")
+            )
+            redirect_response.set_cookie(ACCESS_COOKIE_NAME, "", max_age=0)
+            return redirect_response
+
+        return render_template(
+            "user_settings.html",
+            username=user_data.get("username"),
+            email=user_data.get("email"),
+            user_id=user_data.get("user_id"),
+            projects=projects,
+            message="Unknown action",
+            message_type="danger",
+        )
+
     return render_template(
         "user_settings.html",
         username=user_data.get("username"),

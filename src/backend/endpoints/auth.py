@@ -305,3 +305,140 @@ def __register_routes(app: Flask):
         response = jsonify({"message": "Logout successful"})
         response.delete_cookie('access_token_cookie')
         return response, 200
+
+
+    @app.route("/api/account/username", methods=["PUT"])
+    @jwt_required()
+    def update_username():
+        """Update the authenticated user's username."""
+        user_id = get_jwt_identity()
+        data = request.form
+        new_username = (data.get("username") or "").strip()
+
+        if not new_username:
+            return jsonify({"message": "username is required"}), 400
+
+        conn = None
+        try:
+            conn = sqlite3.connect(DB_PATH)
+            conn.row_factory = sqlite3.Row
+            cur = conn.cursor()
+
+            cur.execute("SELECT user_id FROM users WHERE user_id = ?", (user_id,))
+            user = cur.fetchone()
+            if not user:
+                return jsonify({"message": "User not found"}), 404
+
+            cur.execute(
+                "SELECT user_id FROM users WHERE username = ? AND user_id != ?",
+                (new_username, user_id)
+            )
+            if cur.fetchone():
+                return jsonify({"message": "Username already in use"}), 400
+
+            cur.execute(
+                "UPDATE users SET username = ? WHERE user_id = ?",
+                (new_username, user_id)
+            )
+            conn.commit()
+            return jsonify({"message": "Username updated", "username": new_username}), 200
+
+        except Exception as e:
+            app.logger.error(f"Error updating username: {e}")
+            return jsonify({"message": "Failed to update username", "cause": str(e)}), 500
+        finally:
+            if conn:
+                conn.close()
+
+
+    @app.route("/api/account/password", methods=["PUT"])
+    @jwt_required()
+    def update_password():
+        """Update the authenticated user's password.
+
+        Requires:
+        - current_password
+        - new_password
+        - totp_code
+        """
+        user_id = get_jwt_identity()
+        data = request.form
+        current_password = data.get("current_password") or ""
+        new_password = data.get("new_password") or ""
+        totp_code = (data.get("totp_code") or "").strip()
+
+        if not current_password or not new_password or not totp_code:
+            return jsonify({"message": "current_password, new_password, and totp_code are required"}), 400
+
+        conn = None
+        try:
+            conn = sqlite3.connect(DB_PATH)
+            conn.row_factory = sqlite3.Row
+            cur = conn.cursor()
+
+            cur.execute(
+                "SELECT user_id, password_hash, totp_secret FROM users WHERE user_id = ?",
+                (user_id,)
+            )
+            user = cur.fetchone()
+
+            if not user:
+                return jsonify({"message": "User not found"}), 404
+
+            totp = pyotp.TOTP(user["totp_secret"])
+            if not totp.verify(totp_code, valid_window=1):
+                return jsonify({"message": "Invalid 2FA code"}), 401
+
+            if not bcrypt.checkpw(current_password.encode(), user["password_hash"].encode()):
+                return jsonify({"message": "Current password is incorrect"}), 401
+
+            password_hash = bcrypt.hashpw(new_password.encode(), bcrypt.gensalt()).decode()
+            cur.execute(
+                "UPDATE users SET password_hash = ? WHERE user_id = ?",
+                (password_hash, user_id)
+            )
+            conn.commit()
+            return jsonify({"message": "Password updated"}), 200
+
+        except Exception as e:
+            app.logger.error(f"Error updating password: {e}")
+            return jsonify({"message": "Failed to update password", "cause": str(e)}), 500
+        finally:
+            if conn:
+                conn.close()
+
+
+    @app.route("/api/account", methods=["DELETE"])
+    @jwt_required()
+    def delete_account():
+        """Delete the authenticated user's account."""
+        user_id = get_jwt_identity()
+
+        conn = None
+        try:
+            conn = sqlite3.connect(DB_PATH)
+            cur = conn.cursor()
+
+            cur.execute("DELETE FROM users WHERE user_id = ?", (user_id,))
+            if cur.rowcount == 0:
+                return jsonify({"message": "User not found"}), 404
+
+            conn.commit()
+
+            # Revoke current token + attempt to clear cookie.
+            try:
+                jti = get_jwt()["jti"]
+                BLOCKLIST.add(jti)
+            except Exception:
+                pass
+
+            response = jsonify({"message": "Account deleted"})
+            response.delete_cookie('access_token_cookie')
+            return response, 200
+
+        except Exception as e:
+            app.logger.error(f"Error deleting account: {e}")
+            return jsonify({"message": "Failed to delete account", "cause": str(e)}), 500
+        finally:
+            if conn:
+                conn.close()
