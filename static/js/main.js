@@ -151,7 +151,24 @@ function populateViewMode(data) {
     document.getElementById('view_start_time').textContent = data.start_time || 'N/A';
     document.getElementById('view_end_time').textContent = data.end_time || 'N/A';
     document.getElementById('view_time_worked').textContent = data.time_worked_minutes || 'N/A';
-    document.getElementById('view_notes').textContent = data.developer_notes || 'No notes';
+    const viewNotesEl = document.getElementById('view_notes');
+    const rawNotes = data.developer_notes || '';
+
+    if (window.marked && window.DOMPurify) {
+        try {
+            if (typeof window.marked.setOptions === 'function') {
+                window.marked.setOptions({ breaks: true });
+            }
+
+            const rendered = window.marked.parse(rawNotes);
+            const clean = window.DOMPurify.sanitize(rendered, { USE_PROFILES: { html: true } });
+            viewNotesEl.innerHTML = clean || '<span class="text-muted">No notes</span>';
+        } catch (e) {
+            viewNotesEl.textContent = rawNotes || 'No notes';
+        }
+    } else {
+        viewNotesEl.textContent = rawNotes || 'No notes';
+    }
     document.getElementById('view_log_timestamp').textContent = data.log_timestamp || 'N/A';
     
     const commitsDiv = document.getElementById('view_commits');

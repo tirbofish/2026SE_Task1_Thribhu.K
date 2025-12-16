@@ -331,7 +331,7 @@
                         <hr>
                         <div class="mb-3">
                             <h6 class="text-muted">Developer Notes</h6>
-                            <div id="view_notes" style="white-space: pre-wrap;"></div>
+                            <div id="view_notes"></div>
                         </div>
                         <hr>
                         <div class="mb-3">
@@ -391,6 +391,8 @@
         window.STATIC_ADDRESS = "{{ url_for('static', filename='') }}";
         window.SERVICE_WORKER_ADDRESS = "{{ url_for('static', filename='js/serviceWorker.js') }}";
     </script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/lib/marked.umd.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.3.1/dist/purify.min.js"></script>
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
     <script src="{{ url_for('static', filename='js/serviceWorker.js') }}"></script>
     <script src="{{ url_for('static', filename='js/app.js') }}"></script>
