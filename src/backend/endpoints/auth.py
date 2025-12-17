@@ -98,7 +98,7 @@ def __register_routes(app: Flask):
 
     @app.route("/api/register/verify_2fa", methods=["POST"])
     def verify_2fa_registration():
-        """Verify 2FA code during registration and complete registration"""
+        """Verifies 2FA"""
         data = request.form
         user_id = data.get("user_id")
         totp_code = data.get("totp_code")
@@ -310,7 +310,10 @@ def __register_routes(app: Flask):
     @app.route("/api/account/username", methods=["PUT"])
     @jwt_required()
     def update_username():
-        """Update the authenticated user's username."""
+        """Update the authenticated user's username.
+        
+        Requires a JWT token
+        """
         user_id = get_jwt_identity()
         data = request.form
         new_username = (data.get("username") or "").strip()
@@ -360,6 +363,8 @@ def __register_routes(app: Flask):
         - current_password
         - new_password
         - totp_code
+        
+        Also requires for user to be JWT authenticated. 
         """
         user_id = get_jwt_identity()
         data = request.form
@@ -425,12 +430,15 @@ def __register_routes(app: Flask):
 
             conn.commit()
 
-            # Revoke current token + attempt to clear cookie.
             try:
-                jti = get_jwt()["jti"]
-                BLOCKLIST.add(jti)
-            except Exception:
-                pass
+                jwt_data = get_jwt()
+                jti = jwt_data.get("jti")
+                if jti:
+                    BLOCKLIST.add(jti)
+                else:
+                    app.logger.warning("delete_account: JWT missing 'jti'; skipping blocklist")
+            except RuntimeError as e:
+                app.logger.warning(f"delete_account: unable to read JWT for blocklisting: {e}")
 
             response = jsonify({"message": "Account deleted"})
             response.delete_cookie('access_token_cookie')

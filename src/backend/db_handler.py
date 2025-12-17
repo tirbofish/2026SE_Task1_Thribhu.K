@@ -360,6 +360,7 @@ def update_log(log_id, data, user_id):
     params.append(log_id)
     params.append(user_id)
 
+    # bandit is flagging this. note to self: false positive. no sql injection is happening. 
     query = f"UPDATE log_entries SET {', '.join(update_fields)} WHERE log_id = ? AND user_id = ?"
     cur.execute(query, params)
 
@@ -499,6 +500,7 @@ def update_project(project_id, user_id, project_name=None, repository_url=None, 
         if not update_fields:
             return 0
 
+        # false positive, bandit is flagging this 🙄
         params.extend([project_id, user_id])
         query = f"UPDATE projects SET {', '.join(update_fields)} WHERE project_id = ? AND created_by = ?"
         cur.execute(query, params)

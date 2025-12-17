@@ -15,6 +15,9 @@ app = Flask(
 
 app.secret_key = os.getenv("FRONTEND_SECRET_KEY", "dev-frontend-secret")
 
+@app.route("/privacy.html", methods=["GET"])
+def privacy():
+    return render_template("/privacy.html")
 
 @app.template_filter('from_json')
 def from_json_filter(value):
@@ -37,8 +40,8 @@ def _build_error_message(api_response):
         payload = api_response.json()
         if isinstance(payload, dict) and payload.get("message"):
             return payload["message"]
-    except Exception:
-        pass
+    except Exception as e:
+        app.logger.error(f"Exception caught: {e}")
     return f"Request failed with status {api_response.status_code}"
 
 
@@ -877,4 +880,4 @@ def page_not_found(e):
     return redirect(url_for("index") + "?message=Page not found&message_type=danger")
 
 if __name__ == '__main__':
-    app.run(debug=True, host="0.0.0.0", port=4200)
+    app.run(host="0.0.0.0", port=4200)

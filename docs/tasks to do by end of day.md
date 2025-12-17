@@ -6,14 +6,14 @@ tasks to do:
 * Show message when user enters onto page that does not exist anymore: Resource not available
 * Make "View", "Edit" and "Delete" buttons for logs work
 * 2FA
-
-# mandatory
-
 * Ability to filter and search through logs
 * Add a way to view settings to change information and to delete the project
 * User information
     * ability to delete user from database
 * After project is created, redirect to project
+
+# mandatory
+
 * adding security features
 
 # optional

@@ -1,3 +1,41 @@
+function getCookieValue(name) {
+    const cookies = document.cookie ? document.cookie.split('; ') : [];
+    const prefix = `${name}=`;
+    for (const cookie of cookies) {
+        if (cookie.startsWith(prefix)) {
+            return decodeURIComponent(cookie.slice(prefix.length));
+        }
+    }
+    return null;
+}
+
+/// a more secure way of fetching an API. sets up the csrf stuff. 
+function apiFetch(url, options = {}) {
+    const opts = {
+        credentials: 'include',
+        mode: 'cors',
+        ...options
+    };
+
+    const method = (opts.method || 'GET').toUpperCase();
+    if (!['GET', 'HEAD', 'OPTIONS'].includes(method)) {
+        const csrfToken = getCookieValue('csrf_access_token');
+        if (csrfToken) {
+            if (!opts.headers) {
+                opts.headers = {};
+            }
+
+            if (opts.headers instanceof Headers) {
+                opts.headers.set('X-CSRF-TOKEN', csrfToken);
+            } else {
+                opts.headers['X-CSRF-TOKEN'] = csrfToken;
+            }
+        }
+    }
+
+    return fetch(url, opts);
+}
+
 async function logout() {
     let apiEndpoint = localStorage.getItem('apiEndpoint');
     if (!apiEndpoint) {
@@ -5,11 +43,7 @@ async function logout() {
     }
 
     try {
-        const response = await fetch(`${apiEndpoint}/api/logout`, {
-            method: 'POST',
-            credentials: 'include',
-            mode: 'cors'
-        });
+        await apiFetch(`${apiEndpoint}/api/logout`, { method: 'POST' });
 
         window.location.href = '/login?message=Logged out successfully&message_type=success';
     } catch (error) {
@@ -69,9 +103,8 @@ function submitLogForm() {
 
     const apiEndpoint = localStorage.getItem('apiEndpoint') || 'http://127.0.0.1:5000';
 
-    fetch(`${apiEndpoint}/api/${window.PAGE_PROJECT_ID}/logs`, {
+    apiFetch(`${apiEndpoint}/api/${window.PAGE_PROJECT_ID}/logs`, {
         method: 'POST',
-        credentials: 'include',
         body: formData
     })
     .then(response => response.json().then(data => ({status: response.status, data})))
@@ -98,10 +131,7 @@ let currentLogData = null;
 function viewLog(logId) {
     const apiEndpoint = localStorage.getItem('apiEndpoint') || 'http://127.0.0.1:5000';
     
-    fetch(`${apiEndpoint}/api/${window.PAGE_PROJECT_ID}/logs/${logId}`, {
-        method: 'GET',
-        credentials: 'include'
-    })
+    apiFetch(`${apiEndpoint}/api/${window.PAGE_PROJECT_ID}/logs/${logId}`)
     .then(response => response.json())
     .then(data => {
         currentLogData = data;
@@ -124,10 +154,7 @@ function viewLog(logId) {
 function editLog(logId) {
     const apiEndpoint = localStorage.getItem('apiEndpoint') || 'http://127.0.0.1:5000';
     
-    fetch(`${apiEndpoint}/api/${window.PAGE_PROJECT_ID}/logs/${logId}`, {
-        method: 'GET',
-        credentials: 'include'
-    })
+    apiFetch(`${apiEndpoint}/api/${window.PAGE_PROJECT_ID}/logs/${logId}`)
     .then(response => response.json())
     .then(data => {
         currentLogData = data;
@@ -176,7 +203,13 @@ function populateViewMode(data) {
         try {
             const commits = typeof data.related_commits === 'string' ? JSON.parse(data.related_commits) : data.related_commits;
             if (commits && commits.length > 0) {
-                commitsDiv.innerHTML = commits.map(c => `<span class="badge bg-secondary me-1">${c.substring(0, 8)}</span>`).join('');
+                commitsDiv.textContent = '';
+                commits.forEach((commit) => {
+                    const badge = document.createElement('span');
+                    badge.className = 'badge bg-secondary me-1';
+                    badge.textContent = String(commit).substring(0, 8);
+                    commitsDiv.appendChild(badge);
+                });
             } else {
                 commitsDiv.innerHTML = '<span class="text-muted">None</span>';
             }
@@ -270,9 +303,8 @@ function saveLogEdit() {
 
     const apiEndpoint = localStorage.getItem('apiEndpoint') || 'http://127.0.0.1:5000';
 
-    fetch(`${apiEndpoint}/api/${window.PAGE_PROJECT_ID}/logs/${logId}`, {
+    apiFetch(`${apiEndpoint}/api/${window.PAGE_PROJECT_ID}/logs/${logId}`, {
         method: 'PUT',
-        credentials: 'include',
         body: formData
     })
     .then(response => response.json().then(data => ({status: response.status, data})))
@@ -297,9 +329,8 @@ function deleteLog(projectId, logId) {
 
     const apiEndpoint = localStorage.getItem('apiEndpoint') || 'http://127.0.0.1:5000';
 
-    fetch(`${apiEndpoint}/api/${projectId}/logs/${logId}`, {
+    apiFetch(`${apiEndpoint}/api/${projectId}/logs/${logId}`, {
         method: 'DELETE',
-        credentials: 'include'
     })
     .then(response => response.json().then(data => ({status: response.status, data})))
     .then(({status, data}) => {

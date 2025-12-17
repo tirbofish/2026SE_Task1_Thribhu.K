@@ -13,6 +13,7 @@ import os
 #
 # If you are running this on a code space, make sure the port is visible to the public (API).
 # The frontend does not need to be public
+load_dotenv()
 
 app = Flask(__name__, template_folder='../../templates',
             static_folder='../../static')
@@ -29,9 +30,11 @@ def check_if_token_revoked(jwt_header, jwt_payload):
 app.config['SECRET_KEY'] = os.getenv("SECRET_KEY")
 app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY")
 app.config['JWT_TOKEN_LOCATION'] = ['cookies']
-app.config['JWT_COOKIE_SECURE'] = False
-app.config['JWT_COOKIE_CSRF_PROTECT'] = False
+app.config['JWT_COOKIE_SECURE'] = os.getenv("JWT_COOKIE_SECURE", "0") == "1"
+app.config['JWT_COOKIE_SAMESITE'] = os.getenv("JWT_COOKIE_SAMESITE", "Lax")
+app.config['JWT_COOKIE_CSRF_PROTECT'] = True
 app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(days=1)
+
 
 endpoints.register_routes(app)
 
@@ -51,7 +54,6 @@ def page_not_found(e):
 
 
 if __name__ == "__main__":
-    load_dotenv()
     dbHandler.prepare(app.logger)
 
     print("\nRegistered routes:")
@@ -60,4 +62,4 @@ if __name__ == "__main__":
             f"  {rule.rule} [{', '.join(rule.methods - {'HEAD', 'OPTIONS'})}]")
     print()
 
-    app.run(debug=True, host="0.0.0.0", port=5000)
+    app.run(host="0.0.0.0", port=5000)
