@@ -1,5 +1,5 @@
 import os
-from flask import Flask, render_template, redirect, url_for, request, session, make_response, send_file
+from flask import Flask, render_template, redirect, url_for, request, session, make_response, send_file, jsonify
 import requests as req
 import json
 
@@ -36,9 +36,11 @@ def favicon():
     icon_path = os.path.join(static_root, "images", "favicon.png")
     return send_file(icon_path, mimetype="image/png", max_age=86400)
 
+
 @app.route("/privacy.html", methods=["GET"])
 def privacy():
     return render_template("/privacy.html")
+
 
 @app.template_filter('from_json')
 def from_json_filter(value):
@@ -80,9 +82,9 @@ def login():
     if request.method == "GET":
         redirect_message = request.args.get("message")
         redirect_message_type = request.args.get("message_type", "info")
-        
+
         return render_template(
-            "login.html", 
+            "login.html",
             api_endpoint=api_endpoint,
             redirect_message=redirect_message,
             redirect_message_type=redirect_message_type
@@ -122,6 +124,19 @@ def login():
             api_endpoint=api_endpoint
         )
 
+    # Handle 2FA flow
+    try:
+        response_data = response.json()
+    except (ValueError, KeyError):
+        response_data = {}
+
+    if response_data.get("requires_2fa"):
+        # Store user_id and api_endpoint in session for 2FA verification
+        session["pending_2fa_user_id"] = response_data.get("user_id")
+        session["api_endpoint"] = api_endpoint
+        return jsonify(response_data), 200
+
+    # Legacy flow without 2FA (shouldn't happen)
     token = response.cookies.get(ACCESS_COOKIE_NAME)
     if not token:
         return render_template(
@@ -144,6 +159,53 @@ def login():
         max_age=86400
     )
     return redirect_response
+
+
+@app.route("/login/verify_2fa", methods=["POST"])
+def verify_2fa_login():
+    """Handle 2FA verification and set authentication cookie"""
+    api_endpoint = session.get("api_endpoint", DEFAULT_API_ENDPOINT)
+    user_id = session.get("pending_2fa_user_id")
+    totp_code = request.form.get("totp_code")
+
+    if not user_id:
+        return jsonify({"message": "No pending 2FA verification"}), 400
+
+    if not totp_code:
+        return jsonify({"message": "2FA code is required"}), 400
+
+    try:
+        response = req.post(
+            f"{api_endpoint}/api/login/verify_2fa",
+            data={"user_id": user_id, "totp_code": totp_code},
+            timeout=API_TIMEOUT_SECONDS
+        )
+    except req.RequestException as exc:
+        return jsonify({"message": f"Unable to reach API: {exc}"}), 500
+
+    if response.status_code != 200:
+        return jsonify(_build_error_message(response)), response.status_code
+
+    # Get the token from the backend response
+    token = response.cookies.get(ACCESS_COOKIE_NAME)
+    if not token:
+        return jsonify({"message": "Token missing in response"}), 500
+
+    # Clear the pending 2FA session data
+    session.pop("pending_2fa_user_id", None)
+
+    # Return success response with cookie
+    response_data = response.json()
+    json_response = jsonify(response_data)
+    json_response.set_cookie(
+        ACCESS_COOKIE_NAME,
+        token,
+        httponly=True,
+        secure=False,
+        samesite="Lax",
+        max_age=86400
+    )
+    return json_response, 200
 
 
 @app.route("/register", methods=["GET", "POST"])
@@ -225,6 +287,7 @@ def register():
     )
     return redirect_response
 
+
 def check_if_user_is_authenticated(api_endpoint, token):
     if not token:
         return redirect(url_for("login"))
@@ -249,17 +312,18 @@ def check_if_user_is_authenticated(api_endpoint, token):
     else:
         return response.json()
 
+
 @app.route("/dashboard", methods=["GET"])
 def dashboard():
     api_endpoint = session.get("api_endpoint", DEFAULT_API_ENDPOINT)
     token = request.cookies.get(ACCESS_COOKIE_NAME)
-    
+
     result = check_if_user_is_authenticated(api_endpoint, token)
     if not isinstance(result, dict):
         return result
-    
+
     user_data = result
-    
+
     projects = []
     try:
         projects_response = req.get(
@@ -276,7 +340,7 @@ def dashboard():
             message_detail=str(exc),
             message_type="danger"
         )
-    
+
     return render_template(
         "dashboard.html",
         username=user_data.get("username"),
@@ -285,18 +349,19 @@ def dashboard():
         projects=projects
     )
 
+
 @app.route("/projects/new", methods=["GET", "POST"])
 def new_project():
     # copy from here for auth checking
     api_endpoint = session.get("api_endpoint", DEFAULT_API_ENDPOINT)
     token = request.cookies.get(ACCESS_COOKIE_NAME)
-    
+
     result = check_if_user_is_authenticated(api_endpoint, token)
     if not isinstance(result, dict):
         return result
-    
+
     user_data = result
-    
+
     projects = []
     try:
         projects_response = req.get(
@@ -372,7 +437,7 @@ def new_project():
             project_name=project_name,
             repository_url=repository_url,
             description=description,
-            
+
             username=user_data.get("username"),
             email=user_data.get("email"),
             user_id=user_data.get("user_id"),
@@ -386,21 +451,22 @@ def new_project():
             return redirect(url_for("project_info", project_id=project_id))
     except Exception as e:
         print(f"Exception as line 363 frontend/main.py: {e}")
-    
+
     return redirect(url_for("dashboard"))
+
 
 @app.route("/projects/<int:project_id>", methods=["GET", "POST"])
 def project_info(project_id):
     # copy from here for auth checking
     api_endpoint = session.get("api_endpoint", DEFAULT_API_ENDPOINT)
     token = request.cookies.get(ACCESS_COOKIE_NAME)
-    
+
     result = check_if_user_is_authenticated(api_endpoint, token)
     if not isinstance(result, dict):
         return result
-    
+
     user_data = result
-    
+
     projects = []
     try:
         projects_response = req.get(
@@ -416,7 +482,7 @@ def project_info(project_id):
     if not token:
         return redirect(url_for("login"))
     # end copy
-    
+
     logs = []
     try:
         allowed_filter_keys = {
@@ -476,11 +542,11 @@ def project_info(project_id):
             message="Unable to reach API",
             message_detail=str(exc)
         )
-    
+
     if request.method == "GET":
         return render_template(
             "devlog.html",
-            
+
             # populate the data
             username=user_data.get("username"),
             email=user_data.get("email"),
@@ -492,18 +558,19 @@ def project_info(project_id):
     else:
         return ""
 
+
 @app.route("/projects/<int:project_id>/settings", methods=["GET", "POST"])
 def project_settings(project_id):
     # copy from here for auth checking
     api_endpoint = session.get("api_endpoint", DEFAULT_API_ENDPOINT)
     token = request.cookies.get(ACCESS_COOKIE_NAME)
-    
+
     result = check_if_user_is_authenticated(api_endpoint, token)
     if not isinstance(result, dict):
         return result
-    
+
     user_data = result
-    
+
     projects = []
     try:
         projects_response = req.get(
@@ -519,8 +586,9 @@ def project_settings(project_id):
     if not token:
         return redirect(url_for("login"))
     # end copy
-    
-    project = next((p for p in projects if p.get('project_id') == project_id), None)
+
+    project = next((p for p in projects if p.get(
+        'project_id') == project_id), None)
 
     if project is None:
         return render_template(
@@ -608,7 +676,8 @@ def project_settings(project_id):
             except req.RequestException:
                 pass
 
-            project = next((p for p in projects if p.get('project_id') == project_id), project)
+            project = next((p for p in projects if p.get(
+                'project_id') == project_id), project)
             return render_template(
                 "project_settings.html",
                 username=user_data.get("username"),
@@ -672,7 +741,7 @@ def project_settings(project_id):
             message="Unknown action",
             message_type="danger",
         )
-    
+
     return render_template(
         "project_settings.html",
         username=user_data.get("username"),
@@ -684,18 +753,19 @@ def project_settings(project_id):
         project_name=project.get('project_name'),
     )
 
+
 @app.route("/settings", methods=["GET", "POST"])
 def user_settings():
     # copy from here for auth checking
     api_endpoint = session.get("api_endpoint", DEFAULT_API_ENDPOINT)
     token = request.cookies.get(ACCESS_COOKIE_NAME)
-    
+
     result = check_if_user_is_authenticated(api_endpoint, token)
     if not isinstance(result, dict):
         return result
-    
+
     user_data = result
-    
+
     projects = []
     try:
         projects_response = req.get(
@@ -711,7 +781,7 @@ def user_settings():
     if not token:
         return redirect(url_for("login"))
     # end copy
-    
+
     if request.method == "POST":
         action = (request.form.get("action") or "").strip().lower()
 
@@ -873,7 +943,8 @@ def user_settings():
 
             session.pop("api_endpoint", None)
             redirect_response = make_response(
-                redirect(url_for("login") + "?message=Account deleted&message_type=success")
+                redirect(url_for("login") +
+                         "?message=Account deleted&message_type=success")
             )
             redirect_response.set_cookie(ACCESS_COOKIE_NAME, "", max_age=0)
             return redirect_response
@@ -896,9 +967,11 @@ def user_settings():
         projects=projects,
     )
 
+
 @app.errorhandler(404)
 def page_not_found(e):
     return redirect(url_for("index") + "?message=Page not found&message_type=danger")
 
+
 if __name__ == '__main__':
-    app.run(host="0.0.0.0", port=4200)
+    app.run(debug=True, host="0.0.0.0", port=4200)

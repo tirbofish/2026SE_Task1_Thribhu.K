@@ -48,6 +48,7 @@ def ping():
 def index():
     return render_template("lost_dumbass.html")
 
+
 @app.errorhandler(404)
 def page_not_found(e):
     return jsonify({"message": "404, requested resource not found", "cause": str(e)}), 404
@@ -62,4 +63,4 @@ if __name__ == "__main__":
             f"  {rule.rule} [{', '.join(rule.methods - {'HEAD', 'OPTIONS'})}]")
     print()
 
-    app.run(host="0.0.0.0", port=5000)
+    app.run(debug=True, host="0.0.0.0", port=5000)
