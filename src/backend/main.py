@@ -32,7 +32,8 @@ app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY")
 app.config['JWT_TOKEN_LOCATION'] = ['cookies']
 app.config['JWT_COOKIE_SECURE'] = os.getenv("JWT_COOKIE_SECURE", "0") == "1"
 app.config['JWT_COOKIE_SAMESITE'] = os.getenv("JWT_COOKIE_SAMESITE", "Lax")
-app.config['JWT_COOKIE_CSRF_PROTECT'] = True
+# Disabled for development with separate frontend/backend servers
+app.config['JWT_COOKIE_CSRF_PROTECT'] = False
 app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(days=1)
 
 
