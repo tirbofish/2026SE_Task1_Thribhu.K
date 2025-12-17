@@ -1,5 +1,5 @@
 import os
-from flask import Flask, render_template, redirect, url_for, request, session, make_response
+from flask import Flask, render_template, redirect, url_for, request, session, make_response, send_file
 import requests as req
 import json
 
@@ -14,6 +14,27 @@ app = Flask(
 )
 
 app.secret_key = os.getenv("FRONTEND_SECRET_KEY", "dev-frontend-secret")
+
+
+@app.route("/serviceWorker.js", methods=["GET"])
+def service_worker():
+    """Serve the service worker from the app root.
+
+    Browsers restrict a service worker's max scope to its script directory unless
+    Service-Worker-Allowed is set. Serving at '/serviceWorker.js' allows scope '/'.
+    """
+    static_root = os.path.abspath(app.static_folder)
+    sw_path = os.path.join(static_root, "js", "serviceWorker.js")
+    response = send_file(sw_path, mimetype="application/javascript", max_age=0)
+    response.headers["Service-Worker-Allowed"] = "/"
+    return response
+
+
+@app.route("/favicon.ico", methods=["GET"])
+def favicon():
+    static_root = os.path.abspath(app.static_folder)
+    icon_path = os.path.join(static_root, "images", "favicon.png")
+    return send_file(icon_path, mimetype="image/png", max_age=86400)
 
 @app.route("/privacy.html", methods=["GET"])
 def privacy():

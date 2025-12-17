@@ -1,20 +1,20 @@
-const staticAddr = window.STATIC_ADDRESS;
+const STATIC_PREFIX = "/static/";
 
 const assets = [
-    "/",
-    staticAddr + "css/style.css",
-    staticAddr + "css/bootstrap.min.css",
-    staticAddr + "js/bootstrap.bundle.min.js",
-    staticAddr + "js/app.js",
-    staticAddr + "images/logo.png",
-    staticAddr + "images/favicon.jpg",
-    staticAddr + "icons/icon-128x128.png",
-    staticAddr + "icons/icon-192x192.png",
-    staticAddr + "icons/icon-384x384.png",
-    staticAddr + "icons/icon-512x512.png",
-    staticAddr + "icons/desktop_screenshot.png",
-    staticAddr + "icons/mobile_screenshot.png"
-  ];
+  "/",
+  STATIC_PREFIX + "css/style.css",
+  STATIC_PREFIX + "css/bootstrap.min.css",
+  STATIC_PREFIX + "js/bootstrap.bundle.min.js",
+  STATIC_PREFIX + "js/app.js",
+  STATIC_PREFIX + "images/logo.png",
+  STATIC_PREFIX + "images/favicon.jpg",
+  STATIC_PREFIX + "icons/icon-128x128.png",
+  STATIC_PREFIX + "icons/icon-192x192.png",
+  STATIC_PREFIX + "icons/icon-384x384.png",
+  STATIC_PREFIX + "icons/icon-512x512.png",
+  STATIC_PREFIX + "icons/desktop_screenshot.png",
+  STATIC_PREFIX + "icons/mobile_screenshot.png",
+];
 
 const CATALOGUE_ASSETS = "catalogue-assets";
 
@@ -23,10 +23,9 @@ self.addEventListener("install", (installEvt) => {
     caches
       .open(CATALOGUE_ASSETS)
       .then((cache) => {
-        console.log(cache)
-        cache.addAll(assets);
+        return cache.addAll(assets);
       })
-      .then(self.skipWaiting())
+      .then(() => self.skipWaiting())
       .catch((e) => {
         console.log(e);
       })
@@ -40,10 +39,8 @@ self.addEventListener("activate", function (evt) {
       .then((keyList) => {
         return Promise.all(
           keyList.map((key) => {
-            if (key === CATALOGUE_ASSETS) {
-              console.log("Removed old cache from", key);
-              return caches.delete(key);
-            }
+            if (key !== CATALOGUE_ASSETS) return caches.delete(key);
+            return undefined;
           })
         );
       })
@@ -59,4 +56,4 @@ self.addEventListener("fetch", function (evt) {
       });
     })
   );
-})
+});

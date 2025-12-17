@@ -3,6 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='images/favicon.png') }}" />
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='images/favicon.png') }}" />
     <title>LoperLog - Account Settings</title>
     <!-- Bootstrap stuff -->
     <link
@@ -300,7 +302,7 @@
                 </div>
 
                 <div class="modal-body">
-                    <p class="mb-0"><strong>Warning 8:</strong> Lets see you delete your account now haha</p>
+                    <p class="mb-0"><strong>Warning 7:</strong> Lets see you delete your account now haha</p>
                 </div>
 
                 <div class="modal-footer">
@@ -326,7 +328,6 @@
                 </div>
                 <div class="modal-body">
                     <p class="mb-0"><strong>Warning 8:</strong> You caught me. Fine, ill let you delete...</p>
-                    <p class="text-muted small mt-2 mb-0" id="warning8Hint">Hint: Tab beats the mouse.</p>
                 </div>
                 <div class="modal-footer evade-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -352,7 +353,6 @@
                 </div>
                 <div class="modal-body">
                     <p class="mb-0"><strong>Final warning:</strong> This action cannot be undone.</p>
-                    <p class="text-muted small mt-2 mb-0" id="deleteKeyboardHint">Hint: Use Tab to focus “Yes, delete”, then press Enter.</p>
                 </div>
                 <div class="modal-footer evade-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>

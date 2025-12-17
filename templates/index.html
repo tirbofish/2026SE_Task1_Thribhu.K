@@ -3,6 +3,8 @@
     <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='images/favicon.png') }}" />
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='images/favicon.png') }}" />
     <title>LoperLog</title>
 
     <!-- Bootstrap stuff -->
@@ -64,8 +66,8 @@
         </script>
         <script>
             window.STATIC_ADDRESS = "{{ url_for('static', filename='') }}";
+            window.SERVICE_WORKER_ADDRESS = "{{ url_for('service_worker') }}";
         </script>
-        <script src="{{ url_for('static', filename='js/serviceWorker.js') }}"></script>
         <script src="{{ url_for('static', filename='js/app.js') }}"></script>
     </body>
 </html>
